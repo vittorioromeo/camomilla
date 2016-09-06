@@ -1,0 +1,140 @@
+#!/bin/python3 
+
+# Copyright (c) 2016-2017 Vittorio Romeo
+# License: MIT License
+# MIT License page: https://opensource.org/licenses/MIT
+# http://vittorioromeo.info | vittorio.romeo@outlook.com
+
+import sys
+import re
+import time
+
+def parseDepthArg(x):
+    shortPrefix = '-d'
+    longPrefix = '--depth='
+
+    if x.startswith(shortPrefix):
+        return int(x[len(shortPrefix):])
+
+    if x.startswith(longPrefix):
+        return int(x[len(longPrefix):])
+
+    return 0
+
+src = sys.stdin.read()
+out = ""
+angle_pairs = []
+marked = []
+desired_depth = 0 if len(sys.argv) <= 1 else parseDepthArg(sys.argv[1])
+namespace_replacements = []
+other_replacements = []
+
+def ns_replacement(xfrom, xto):
+    namespace_replacements.append((xfrom, xto))
+    
+def replacement(xfrom, xto):
+    other_replacements.append((xfrom, xto))
+
+# Find all `<...>` pair ranges
+def find_angles(s, xi_start, xi_end):
+    open_angles = []
+
+    for i in range(xi_start, xi_end):
+        if s[i-1] != ' ' and s[i] == '<':
+            open_angles.append(i)
+
+        elif s[i-1] != '-' and s[i] == '>':
+            if len(open_angles) == 0:
+                continue
+
+            depth = len(open_angles)
+            x = open_angles.pop()
+            angle_pairs.append((x, i+1, depth))
+
+# Mark a `<...>` pair for removal
+def mark(i_start, i_end):
+    marked.append((i_start + 1, i_end - 1))
+
+# Yield merged overlapping intervals
+# (From 'http://codereview.stackexchange.com/questions/69242')
+def merged(intervals):
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+
+    if not sorted_intervals:  # no intervals to merge
+        return
+
+    # low and high represent the bounds of the current run of merges
+    low, high = sorted_intervals[0]
+
+    for iv in sorted_intervals[1:]:
+        if iv[0] <= high:  # new interval overlaps current run
+            high = max(high, iv[1])  # merge with the current run
+        else:  # current run is over
+            yield low, high  # yield accumulated interval
+            low, high = iv  # start new run
+
+    yield low, high  # end the final run
+
+# TODO: flags to enable/disable
+# TODO: config files!!!
+# TODO: tuple<a, b, c> -> @(a, b, c)
+# TODO: pair<a, b> -> @(a, b)
+
+
+# Namespace replacements
+ns_replacement(r'std', r'')
+ns_replacement(r'boost::hana', r'bh')
+ns_replacement(r'boost::fusion', r'bf')
+ns_replacement(r'boost::spirit', r'bs')
+
+# TODO: case insensitive
+ns_replacement(r'impl', r'_')
+ns_replacement(r'implementation', r'_')
+ns_replacement(r'detail', r'_')
+
+# TODO: vrm specific
+ns_replacement(r'vrm::core', r'vrmc')
+
+# TODO: ecst specific
+ns_replacement(r'ecst', r'')
+ns_replacement(r'system_execution_adapter', r'sea')
+ns_replacement(r'context', r'ctx')
+ns_replacement(r'tag::system', r'tag_s')
+ns_replacement(r'tag::component', r'tag_c')
+
+# Non-namespace replacements
+replacement(r'integral_constant', r'ic')
+replacement(r'lambda\(', r'[](')
+replacement(r'size_t', r'sz_t')
+replacement(r'unsigned ', r'u')
+replacement(r'long u', r'ul')
+replacement(r'type_impl', r'type')
+replacement(r'tag_impl', r'tag')
+replacement(r'forward', r'fwd')
+replacement(r'<>', r'<?>')
+
+# Find all angle bracket pairs
+find_angles(src, 0, len(src))
+
+# Mark pairs matching desired depth for removal
+for p in angle_pairs:
+    if p[2] > desired_depth:
+        mark(p[0], p[1])
+
+# Build output string by avoiding marked intervals
+last = 0
+for m in merged(marked):
+    out += src[last:m[0]]
+    last = m[1]
+out += src[last:len(src)]
+
+# Replace namespaces 
+for nr in namespace_replacements:
+    out = re.sub(nr[0] + r'::', nr[1] + r'::' if len(nr[1]) > 0 else '', out)
+
+# Replace everything else
+for r in other_replacements:
+    out = re.sub(r[0], r[1], out)
+
+# Print result
+print(out)

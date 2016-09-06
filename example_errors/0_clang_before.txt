@@ -1,0 +1,37 @@
+res_code.cpp:274:31: error: no member named 'ya' in 'sf::Vector2<?>'
+                            v.ya *= -1;
+                            ~ ^
+/home/vittorioromeo/OHWorkspace/ecst/include/ecst/context/./system/./instance/instance_subtask.inl:75:13: note: in instantiation of function template specialization 'example::s::keep_in_bounds::process(ctx::system::data_proxy::multi<?> &)::(anonymous class)::operator()<?>' requested here
+            f(this->nth_subscribed(i));
+            ^
+/home/vittorioromeo/OHWorkspace/ecst/include/ecst/context/./system/./instance/./proxy/./data/./impl/multi.inl:39:36: note: in instantiation of function template specialization 'ctx::system::instance<?>::for_entities<?>' requested here
+            return this->_instance.for_entities(_i_begin, _i_end, FWD(f));
+                                   ^
+pres_code.cpp:871:31: note: in instantiation of function template specialization 'example::s::keep_in_bounds::process<?>' requested here
+                            s.process(data);
+                              ^
+/home/vittorioromeo/OHWorkspace/ecst/include/./ecst/./inner_parallelism/./utils/execute_split.hpp:66:18: note: in instantiation of function template specialization 'ctx::system::instance<?>::prepare_and_wait_subtasks<?>' requested here
+            inst.prepare_and_wait_subtasks(ctx, split_count, ef);
+                 ^
+/home/vittorioromeo/OHWorkspace/ecst/include/./ecst/./inner_parallelism/./strategy/./split_evenly_fn/./executor.hpp:44:28: note: in instantiation of function template specialization 'inner_parallelism::utils::prepare_execute_wait_subtasks<?>' requested here
+                    utils::prepare_execute_wait_subtasks( // .
+                           ^
+/home/vittorioromeo/OHWorkspace/ecst/include/ecst/context/./system/./instance/instance.inl:158:35: note: (skipping 16 contexts in backtrace; use -ftemplate-backtrace-limit=0 to see all)
+        this->parallel_executor().execute(*this, ctx, move(st));
+                                  ^
+././utils/pres_game_app.hpp:208:13: note: in instantiation of member function 'example::game_app<?>::init_loops' requested here
+            init_loops();
+            ^
+././utils/pres_game_app.hpp:216:13: note: in instantiation of member function 'example::game_app<?>::init' requested here
+            init();
+            ^
+././boilerplate/app_runner.hpp:48:32: note: in instantiation of member function 'example::game_app<?>::game_app' requested here
+                    _app = new T(_window, FWD(xs)...);
+                               ^
+././utils/pres_game_app.hpp:223:69: note: in instantiation of function template specialization 'example::boilerplate::app_runner<?>::app_runner<?>' requested here
+        boilerplate::app_runner<?> x{
+                                                                    ^
+pres_code.cpp:936:5: note: in instantiation of function template specialization 'example::run_simulation<?>' requested here
+    run_simulation(*ctx);
+    ^
+1 error generated.
