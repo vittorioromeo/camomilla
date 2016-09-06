@@ -75,3 +75,5 @@
 * --help -h
 
 * Blog article.
+
+* Table in README with kbs/wordcount before/after.
