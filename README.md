@@ -11,15 +11,19 @@
     Nested template typenames are collapsed to a specific user-defined depth. This is the most useful transformation executed by `camomilla`. Example:
 
     ```bash
-    echo "metavector<metatype<metawhatever<int>>>::method()" | ./camomilla -d1 
+    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d0
+    # outputs
+    metavector<?>::method()
+
+    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d1 
     # outputs
     metavector<metatype<?>>::method()
 
-    echo "metavector<metatype<metawhatever<int>>>::method()" | ./camomilla -d2
+    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d2
     # outputs
     metavector<metatype<metawhatever<?>>>::method()
 
-    echo "metavector<metatype<metawhatever<int>>>::method()" | ./camomilla -d3
+    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d3
     # outputs
     metavector<metatype<metawhatever<int>>>::method()
     ```
@@ -31,11 +35,11 @@
     A simple transformation from a long namespace symbol to a shorter *(or absent)* one. 
 
     ```bash
-    echo "std::vector<std::pair<std::int16_t, std::int32_t>>" | ./camomilla --depth=100
+    echo "std::vector<std::pair<std::int16_t, std::int32_t>>" | camomilla --depth=100
     # outputs
     vector<pair<int16_t, int32_t>>
     
-    echo "boost::hana::tuple<boost::hana::tuple<boost::hana::int_c<10>, boost::hana::int_c<15>>>" | ./camomilla --depth=100
+    echo "boost::hana::tuple<boost::hana::tuple<boost::hana::int_c<10>, boost::hana::int_c<15>>>" | camomilla -d100
     # outputs
     bh::tuple<bh::tuple<bh::int_c<10>, bh::int_c<15>>>
     ```
@@ -47,7 +51,7 @@
 4. **Generic replacement regexes.**
 
     ```bash
-    echo "std::forward<decltype(std::tuple<unsigned long long, std::size_t, int>)>(x)" | ./camomilla --depth=100
+    echo "std::forward<decltype(std::tuple<unsigned long long, std::size_t, int>)>(x)" | camomilla -d100
     # outputs
     fwd<decltype(tuple<ulong long, sz_t, int>)>(x)
     ```
@@ -67,3 +71,5 @@
 * Reading from config file.
 
 * Refactor code.
+
+* --help -h
