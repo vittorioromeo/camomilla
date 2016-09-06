@@ -1,4 +1,4 @@
-res_code.cpp:274:31: error: no member named 'ya' in 'sf::Vector2<?>'
+pres_code.cpp:274:31: error: no member named 'ya' in 'sf::Vector2<?>'
                             v.ya *= -1;
                             ~ ^
 /home/vittorioromeo/OHWorkspace/ecst/include/ecst/context/./system/./instance/instance_subtask.inl:75:13: note: in instantiation of function template specialization 'example::s::keep_in_bounds::process(ctx::system::data_proxy::multi<?> &)::(anonymous class)::operator()<?>' requested here
