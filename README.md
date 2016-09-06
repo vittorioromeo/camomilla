@@ -51,3 +51,19 @@
     # outputs
     fwd<decltype(tuple<ulong long, sz_t, int>)>(x)
     ```
+
+## TODO
+
+* Look for TODOs in script.
+
+* gcc, g++, clang, clang++ aliases that pass error to camomilla.
+
+* Makefile/install script.
+
+* --depth=-1 or --alldepth or whatever.
+
+* Flags to control transformations.
+
+* Reading from config file.
+
+* Refactor code.
