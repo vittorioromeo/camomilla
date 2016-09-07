@@ -229,6 +229,9 @@ def makeFinalConfig():
     args = ap.parse_args()
 
     conf = vars(args)
+
+    # TODO: should be dictionaries
+    # TODO: overriding namespace/generic replacements depending on key should be possible
     conf["namespaceReplacements"] = set()
     conf["genericReplacements"] = set()
 
