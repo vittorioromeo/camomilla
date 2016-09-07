@@ -144,11 +144,6 @@ def mergeConfig(parent, x):
         for nsr in x["genericReplacements"]:
             addGenericReplacement(*nsr)
 
-
-#    for k, v in x.items():
-#        print(k)
-#        print(v)
-
     # Merge arguments
     parentcopy = parent.copy()
     parentcopy.update(x)
