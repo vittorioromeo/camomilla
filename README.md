@@ -1,7 +1,7 @@
 # camomilla
 
 
-
+TODO: change '-c a b c' with '-c"a b c"'
 
 
 ## What is it?
@@ -62,6 +62,50 @@
 
 
 
+## Usage
+
+### Compiling with `camomilla`
+
+TODO: design, implement and test
+
+TODO: ideally should be able to alias gcc:
+
+```bash
+alias cm_g++='camomilla -d2 -c"c0.json c1.json" g++'
+alias cm_clang++='camomilla -d2 -c"c0.json c1.json" clang++'
+```
+
+```bash
+cm_g++ ./x.cpp
+```
+
+TODO: should implement like:
+
+1) look for extra arguments with ap.parse_known_args() or ap.REMAINDER
+
+2) use os.system ??
+
+
+### Error redirection
+
+TODO: test
+
+Errors produced by compilers can easily be piped into `camomilla`:
+
+```bash
+# Pipe both `stdout` and `stderr` into `camomilla`
+g++ ./x.cpp |& camomilla -d5
+```
+
+If `|&` is not supported by your shell or you want to compare the original error to the processed one, using a temporary file is a good solution:
+
+```bash
+# Redirect both `stdout` and `stderr` into `error.out`
+g++ ./x.cpp &> error.out
+
+# Process the error
+cat error | camomilla -d2
+```
 
 
 ## Configuration
@@ -115,10 +159,10 @@ Any number of configuration file paths can be passed to `camomilla` through the 
 
 ```bash
 # Executes `camomilla` reading `conf0.json`
-camomilla -c conf0.json
+camomilla -c"conf0.json"
 
 # Executes `camomilla` reading `conf0.json` first, then `conf1.json`
-camomilla -c conf0.json conf1.json
+camomilla -c"conf0.json conf1.json"
 ```
 
 Here's a more complex example:
@@ -128,7 +172,7 @@ Here's a more complex example:
 # * Template typename collapsing depth: 4
 # * Namespace replacement regexes: off
 # * Reading the `~/camomilla_configs/test.json` file
-camomilla -d4 --no-namespace-replacements -c ~/camomilla_configs/test.json
+camomilla -d4 --no-namespace-replacements -c"~/camomilla_configs/test.json"
 
 # `test.json` may:
 # * Override the specified depth
