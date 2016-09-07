@@ -140,7 +140,7 @@ camomilla -d4 --no-namespace-replacements -c ~/camomilla_configs/test.json
 
 Configuration files are written in JSON. Here's an example file with complete syntax:
 
-```json
+```javascript
 {
     // Set/override options
     "enableTemplateCollapsing": false,
