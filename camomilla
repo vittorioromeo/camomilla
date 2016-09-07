@@ -183,15 +183,15 @@ def mergeConfig(parent, x):
     if "namespaceReplacements" in x.keys():
         for nsr in x["namespaceReplacements"]:
             print(nsr)
-            parent.setdefault("namespaceReplacements", set()).add(tuple(nsr))
+            parent["namespaceReplacements"].add(tuple(nsr))
             #addNamespaceReplacement(*nsr)
 
     # Merge generic replacements
     if "genericReplacements" in x.keys():
         for nsr in x["genericReplacements"]:
             print(nsr)
-            parent.setdefault("genericReplacements", set()).add(tuple(nsr))
-            addGenericReplacement(*nsr)
+            parent["genericReplacements"].add(tuple(nsr))
+            #addGenericReplacement(*nsr)
 
     # Merge arguments
     #parentcopy = parent.copy()
