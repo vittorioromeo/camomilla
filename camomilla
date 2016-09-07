@@ -128,12 +128,17 @@ def addNamespaceReplacement(xfrom, to):
 def addGenericReplacement(xfrom, to):
     print("Added generic replacement: '{}' -> '{}'".format(xfrom, to))
 
+def forIfExistent(d, key, f):
+    if key in d.keys():
+        for x in d["key"]:
+            f(x)
 
 def mergeConfig(parent, x):
     # Recursively merge configs
-    if "configPaths" in x.keys():
-        for child in x["configPaths"]:
-            x = mergeConfig(x, loadConfig(child))
+    forIfExistent(x, "configPaths", \
+        lambda v: x = mergeConfig(x, loadConfig(child)) \
+        )
+
 
     # Special: namespace replacements
     if "namespaceReplacements" in x.keys():
