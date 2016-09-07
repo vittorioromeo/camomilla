@@ -1,7 +1,9 @@
 {
     "enableTemplateCollapsing": false,
 
-    "namespaceReplacements": [
-        ["ecstTEST", "ecstrrr"]
-    ]
+    "namespaceReplacements": 
+    {
+        "ecstTEST": "ecstrrr",
+        "boost::hana": "dio"
+    }
 }

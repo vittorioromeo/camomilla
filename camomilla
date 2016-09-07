@@ -5,6 +5,8 @@
 # MIT License page: https://opensource.org/licenses/MIT
 # http://vittorioromeo.info | vittorio.romeo@outlook.com
 
+import os
+import stat
 import sys
 import re
 import time
@@ -26,7 +28,7 @@ def parseDepthArg(x):
 
     return 0
 
-src = sys.stdin.read()
+src = ""
 out = ""
 angle_pairs = []
 marked = []
@@ -87,6 +89,10 @@ def merged(intervals):
 # Configuration keys
 # -----------------------------------------------------------------------------------------------------------
 
+akEnableTemplateCollapsing = 'template-collapsing'
+akEnableNamespaceReplacements = 'namespace-replacements'
+akEnableGenericReplacements = 'generic-replacements'
+
 ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
 ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
 ckEnableGenericReplacements = 'enableGenericReplacements'
@@ -112,13 +118,13 @@ def makeArgParser():
     ap = argparse.ArgumentParser(\
         formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
 
-    addFeatureOpt(ap, 'template-collapsing', ckEnableTemplateCollapsing, True, \
+    addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, True, \
         "template collapsing")
 
-    addFeatureOpt(ap, 'namespace-replacements', ckEnableNamespaceReplacements, True, \
+    addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, True, \
         "namespace replacements")
 
-    addFeatureOpt(ap, 'generic-replacements', ckEnableGenericReplacements, True, \
+    addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, True, \
         "generic replacements")
 
     ap.add_argument('-d', '--depth', \
@@ -127,7 +133,7 @@ def makeArgParser():
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        nargs='*', type=str, default="", dest=ckConfigPaths, metavar='P')
+        type=str, default="", dest=ckConfigPaths, metavar='P')
 
     return ap
 
@@ -147,8 +153,8 @@ def propagateArgOverride(key, origin, target):
 
 def propagateReplacements(key, origin, target):
     if key in origin.keys():
-        for x in origin[key]:
-            target[key].add(tuple(x))
+        for k, v in origin[key].items():
+            target[key][k] = v
 
 def propagateConfigPaths(key, origin, target):
     if key in origin.keys():
@@ -159,9 +165,9 @@ def loadConfig(path):
     with open(path) as data:
         j = json.load(data)
         res = {
-            "namespaceReplacements": set(),
-            "genericReplacements": set(),
-            "configPaths": set()
+            ckNamespaceReplacements: dict(),
+            ckGenericReplacements: dict(),
+            ckConfigPaths: set()
         }
 
         propagateArgOverride(ckEnableNamespaceReplacements, j, res)
@@ -210,30 +216,52 @@ def addGenericReplacement(ctx, xfrom, to):
 
 def mergeConfig(parent, x):
     # Recursively merge configs
-    if "configPaths" in x.keys():
-        for child in x["configPaths"]:
+    if ckConfigPaths in x.keys():
+        for child in x[ckConfigPaths]:
             x = mergeConfig(x, loadConfig(child))
 
-    propagateArgOverride("enableNamespaceReplacements", x, parent)
-    propagateArgOverride("enableGenericReplacements", x, parent)
-    propagateArgOverride("enableTemplateCollapsing", x, parent)
-    propagateArgOverride("templateCollapsingDepth", x, parent)
+    propagateArgOverride(ckEnableNamespaceReplacements, x, parent)
+    propagateArgOverride(ckGenericReplacements, x, parent)
+    propagateArgOverride(ckEnableTemplateCollapsing, x, parent)
+    propagateArgOverride(ckTemplateCollapsingDepth, x, parent)
 
-    propagateReplacements("namespaceReplacements", x, parent)
-    propagateReplacements("genericReplacements", x, parent)
+    propagateReplacements(ckNamespaceReplacements, x, parent)
+    propagateReplacements(ckGenericReplacements, x, parent)
 
     return parent
 
+siModeTty = 0
+siModeRead = 1
+
+def detectStdin():
+    mode = os.fstat(sys.stdin.fileno()).st_mode
+    if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
+        return siModeRead
+    else:
+        return siModeTty
+
 def makeFinalConfig():
     ap = makeArgParser()
-    args = ap.parse_args()
+    args = ap.parse_known_args()
 
-    conf = vars(args)
 
-    # TODO: should be dictionaries
-    # TODO: overriding namespace/generic replacements depending on key should be possible
-    conf["namespaceReplacements"] = set()
-    conf["genericReplacements"] = set()
+
+    conf = vars(args[0])
+
+    remaining_cmdline = ' '.join(args[1])
+    pp.pprint(remaining_cmdline)
+
+    siMode = detectStdin()
+    if siMode == siModeRead:
+        print("READING FROM FILE/PIPE")
+        print("SRC = " + sys.stdin.read())
+    else:
+        print("USER INPUT XD")
+
+
+    conf[ckNamespaceReplacements] = dict()
+    conf[ckGenericReplacements] = dict()
+    conf[ckConfigPaths] = conf[ckConfigPaths].split(' ')
 
     print("\n\n")
     debugPrintArgs(conf)
@@ -242,7 +270,7 @@ def makeFinalConfig():
     pp.pprint(conf)
 
     print("\n\n")
-    for child in conf["configPaths"]:
+    for child in conf[ckConfigPaths]:
         conf = mergeConfig(conf, loadConfig(child))
 
     print("\n\n")
@@ -261,11 +289,13 @@ def makeFinalConfig():
 # -----------------------------------------------------------------------------------------------------------
 
 def main():
+    #print("SRC = " + sys.stdin.read())
     conf = makeFinalConfig()
     camomilla = Camomilla(conf)
 
     pp.pprint(camomilla.namespaceReplacements())
     pp.pprint(camomilla.genericReplacements())
+
 
     return 0
 

@@ -2,13 +2,14 @@
     "enableGenericReplacements": false,
     "templateCollapsingDepth": 5,
 
-    "namespaceReplacements": [
-        ["std", ""],
-        ["boost::hana", "bh"],
-        ["boost::fusion", "bf"],
-        ["boost::spirit", "bs"],
-        ["impl", "_"],
-        ["implementation", "_"],
-        ["detail", "_"]
-    ]
+    "namespaceReplacements": 
+    {
+        "std": "",
+        "boost::hana": "bh",
+        "boost::fusion": "bf",
+        "boost::spirit": "bs",
+        "impl": "_",
+        "implementation": "_",
+        "detail": "_"
+    }
 }
