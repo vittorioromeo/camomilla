@@ -259,6 +259,11 @@ def makeFinalConfig():
 
 def main():
     conf = makeFinalConfig()
+    camomilla = Camomilla(conf)
+
+    pp.pprint(camomilla.namespaceReplacements())
+    pp.pprint(camomilla.genericReplacements())
+
     return 0
 
 if __name__ == "__main__":
