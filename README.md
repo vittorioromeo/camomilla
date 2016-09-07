@@ -6,7 +6,7 @@
 
 ## What is it?
 
-`camomilla` is a very simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
+`camomilla` is a simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
 
 `camomilla` perform the following text transformations:
 
@@ -155,19 +155,19 @@ Configuration files are written in JSON. Here's an example file with complete sy
         ["boost::hana", "bh"],
         ["boost::fusion", "bf"],
         ["boost::spirit", "bs"]
-    ]
+    ],
 
     // Add generic replacements
     "genericReplacements" : [
         ["tuple", "tpl"],
         ["forward", "fwd"]
-    ]
+    ],
 
     // Include other config files
     "configPaths": [
         "~/camomilla_configs/boost_spirit.json",
         "~/camomilla_configs/limit_template_depth.json"
-    ],
+    ]
 }
 ```
 
