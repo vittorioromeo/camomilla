@@ -1,4 +1,4 @@
-#!/bin/python3 
+#!/bin/python3
 
 # Copyright (c) 2016-2017 Vittorio Romeo
 # License: MIT License
@@ -8,6 +8,7 @@
 import sys
 import re
 import time
+import argparse
 
 def parseDepthArg(x):
     shortPrefix = '-d'
@@ -31,7 +32,7 @@ other_replacements = []
 
 def ns_replacement(xfrom, xto):
     namespace_replacements.append((xfrom, xto))
-    
+
 def replacement(xfrom, xto):
     other_replacements.append((xfrom, xto))
 
@@ -74,6 +75,44 @@ def merged(intervals):
             low, high = iv  # start new run
 
     yield low, high  # end the final run
+
+def addFeatureOpt(ap, flagName, key, defaultValue, helpStr):
+    ap_feature = ap.add_mutually_exclusive_group(required=False)
+    ap_feature.add_argument('--' + flagName, dest=key, action='store_true', help="| Control " + helpStr)
+    ap_feature.add_argument('--no-' + flagName, dest=key, action='store_false', help="'")
+    ap.set_defaults(**{key:defaultValue})
+
+def makeArgParser():
+    ap = argparse.ArgumentParser(\
+        formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
+
+    ap.add_argument('-d', '--depth', \
+        help="Template collapsing depth", \
+        type=int, default=1, dest='depth', metavar='X')
+
+    addFeatureOpt(ap, 'template-collapsing', 'enabled_templateCollapsing', True, \
+        "template collapsing")
+
+    addFeatureOpt(ap, 'namespace-replacements', 'enabled_namespaceReplacements', True, \
+        "namespace replacements")
+
+    addFeatureOpt(ap, 'generic-replacements', 'enabled_genericReplacements', True, \
+        "generic replacements")
+
+    ap.add_argument('-c', '--config', \
+        help="Configuration file path(s)", \
+        nargs='*', type=str, default="", dest='path', metavar='P')
+
+    return ap
+
+def main():
+    ap = makeArgParser()
+    ap.parse_args()
+
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
 
 # TODO: flags to enable/disable
 # TODO: config files!!!
@@ -128,7 +167,7 @@ for m in merged(marked):
     last = m[1]
 out += src[last:len(src)]
 
-# Replace namespaces 
+# Replace namespaces
 for nr in namespace_replacements:
     out = re.sub(nr[0] + r'::', nr[1] + r'::' if len(nr[1]) > 0 else '', out)
 
