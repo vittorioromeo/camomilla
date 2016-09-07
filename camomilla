@@ -80,6 +80,28 @@ def merged(intervals):
 
     yield low, high  # end the final run
 
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Configuration keys
+# -----------------------------------------------------------------------------------------------------------
+
+ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
+ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
+ckEnableGenericReplacements = 'enableGenericReplacements'
+ckTemplateCollapsingDepth = 'templateCollapsingDepth'
+ckConfigPaths = 'configPaths'
+ckNamespaceReplacements = 'namespaceReplacements'
+ckGenericReplacements = 'genericReplacements'
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Configuration/arg parsing
+# -----------------------------------------------------------------------------------------------------------
+
 def addFeatureOpt(ap, flagName, key, defaultValue, helpStr):
     ap_feature = ap.add_mutually_exclusive_group(required=False)
     ap_feature.add_argument('--' + flagName, dest=key, action='store_true', help="| Control " + helpStr)
@@ -90,22 +112,22 @@ def makeArgParser():
     ap = argparse.ArgumentParser(\
         formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
 
-    addFeatureOpt(ap, 'template-collapsing', 'enableTemplateCollapsing', True, \
+    addFeatureOpt(ap, 'template-collapsing', ckEnableTemplateCollapsing, True, \
         "template collapsing")
 
-    addFeatureOpt(ap, 'namespace-replacements', 'enableNamespaceReplacements', True, \
+    addFeatureOpt(ap, 'namespace-replacements', ckEnableNamespaceReplacements, True, \
         "namespace replacements")
 
-    addFeatureOpt(ap, 'generic-replacements', 'enableGenericReplacements', True, \
+    addFeatureOpt(ap, 'generic-replacements', ckEnableGenericReplacements, True, \
         "generic replacements")
 
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
-        type=int, default=1, dest='templateCollapsingDepth', metavar='X')
+        type=int, default=1, dest=ckTemplateCollapsingDepth, metavar='X')
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        nargs='*', type=str, default="", dest='configPaths', metavar='P')
+        nargs='*', type=str, default="", dest=ckConfigPaths, metavar='P')
 
     return ap
 
@@ -113,16 +135,25 @@ def jsonPrettyPrint(x):
     print(json.dumps(x, sort_keys=True, indent=4, separators=(',', ': ')))
 
 def debugPrintArgs(args):
-    print("Template collapsing: {}".format("on" if args["enableTemplateCollapsing"] else "off"))
-    print("Namespace replacements: {}".format("on" if args["enableNamespaceReplacements"] else "off"))
-    print("Generic replacements: {}".format("on" if args["enableGenericReplacements"] else "off"))
-    print("Template collapsing depth: {}".format(args["templateCollapsingDepth"]))
-    print("Config path(s): {}".format(args["configPaths"]))
+    print("Template collapsing: {}".format("on" if args[ckEnableTemplateCollapsing] else "off"))
+    print("Namespace replacements: {}".format("on" if args[ckEnableNamespaceReplacements] else "off"))
+    print("Generic replacements: {}".format("on" if args[ckEnableGenericReplacements] else "off"))
+    print("Template collapsing depth: {}".format(args[ckTemplateCollapsingDepth]))
+    print("Config path(s): {}".format(args[ckConfigPaths]))
 
 def propagateArgOverride(key, origin, target):
     if key in origin.keys():
         target[key] = origin[key]
 
+def propagateReplacements(key, origin, target):
+    if key in origin.keys():
+        for x in origin[key]:
+            target[key].add(tuple(x))
+
+def propagateConfigPaths(key, origin, target):
+    if key in origin.keys():
+        for x in origin[key]:
+            target[key].add(x)
 
 def loadConfig(path):
     with open(path) as data:
@@ -133,24 +164,15 @@ def loadConfig(path):
             "configPaths": set()
         }
 
-        propagateArgOverride("enableNamespaceReplacements", j, res)
-        propagateArgOverride("enableGenericReplacements", j, res)
-        propagateArgOverride("enableTemplateCollapsing", j, res)
-        propagateArgOverride("templateCollapsingDepth", j, res)
+        propagateArgOverride(ckEnableNamespaceReplacements, j, res)
+        propagateArgOverride(ckEnableGenericReplacements, j, res)
+        propagateArgOverride(ckEnableTemplateCollapsing, j, res)
+        propagateArgOverride(ckTemplateCollapsingDepth, j, res)
 
+        propagateReplacements(ckNamespaceReplacements, j, res)
+        propagateReplacements(ckGenericReplacements, j, res)
 
-
-        if "namespaceReplacements" in j.keys():
-            for x in j["namespaceReplacements"]:
-                res["namespaceReplacements"].add(tuple(x))
-
-        if "genericReplacements" in j.keys():
-            for x in j["genericReplacements"]:
-                res["genericReplacements"].add(tuple(x))
-
-        if "configPaths" in j.keys():
-            for x in j["configPaths"]:
-                res["configPaths"].add(x)
+        propagateConfigPaths(ckConfigPaths, j, res)
 
         return res
 
@@ -168,40 +190,28 @@ def addGenericReplacement(ctx, xfrom, to):
     print("Added generic replacement: '{}' -> '{}'".format(xfrom, to))
 
 def mergeConfig(parent, x):
-    # Recursively load configs
+    # Recursively merge configs
     if "configPaths" in x.keys():
         for child in x["configPaths"]:
             x = mergeConfig(x, loadConfig(child))
 
-    # Override args
     propagateArgOverride("enableNamespaceReplacements", x, parent)
     propagateArgOverride("enableGenericReplacements", x, parent)
     propagateArgOverride("enableTemplateCollapsing", x, parent)
     propagateArgOverride("templateCollapsingDepth", x, parent)
 
-    # Merge namespace replacements
-    if "namespaceReplacements" in x.keys():
-        for nsr in x["namespaceReplacements"]:
-            print(nsr)
-            parent["namespaceReplacements"].add(tuple(nsr))
-            #addNamespaceReplacement(*nsr)
+    propagateReplacements("namespaceReplacements", x, parent)
+    propagateReplacements("genericReplacements", x, parent)
 
-    # Merge generic replacements
-    if "genericReplacements" in x.keys():
-        for nsr in x["genericReplacements"]:
-            print(nsr)
-            parent["genericReplacements"].add(tuple(nsr))
-            #addGenericReplacement(*nsr)
-
-    # Merge arguments
-    #parentcopy = parent.copy()
-    #parentcopy.update(x)
     return parent
 
-def main():
+def makeFinalConfig():
     ap = makeArgParser()
     args = ap.parse_args()
+
     conf = vars(args)
+    conf["namespaceReplacements"] = set()
+    conf["genericReplacements"] = set()
 
     print("\n\n")
     debugPrintArgs(conf)
@@ -219,10 +229,31 @@ def main():
     print("\n\n")
     debugPrintArgs(conf)
 
+    return conf
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------------------------------------
+
+def main():
+    conf = makeFinalConfig()
     return 0
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+
+
+
+
+
+
+
+
 
 # TODO: flags to enable/disable
 # TODO: config files!!!
