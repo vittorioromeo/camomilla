@@ -257,6 +257,7 @@ def makeFinalConfig():
         print("SRC = " + sys.stdin.read())
     else:
         print("USER INPUT XD")
+        os.system(remaining_cmdline + " ")
 
 
     conf[ckNamespaceReplacements] = dict()
