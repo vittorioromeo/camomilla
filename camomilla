@@ -1,253 +1,347 @@
-# camomilla
+#!/bin/python3
+
+# Copyright (c) 2016-2017 Vittorio Romeo
+# License: MIT License
+# MIT License page: https://opensource.org/licenses/MIT
+# http://vittorioromeo.info | vittorio.romeo@outlook.com
+
+import sys
+import re
+import time
+import argparse
+import json
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
+
+def parseDepthArg(x):
+    shortPrefix = '-d'
+    longPrefix = '--depth='
+
+    if x.startswith(shortPrefix):
+        return int(x[len(shortPrefix):])
+
+    if x.startswith(longPrefix):
+        return int(x[len(longPrefix):])
+
+    return 0
+
+src = sys.stdin.read()
+out = ""
+angle_pairs = []
+marked = []
+desired_depth = 0 if len(sys.argv) <= 1 else parseDepthArg(sys.argv[1])
+namespace_replacements = []
+other_replacements = []
+
+def ns_replacement(xfrom, xto):
+    namespace_replacements.append((xfrom, xto))
+
+def replacement(xfrom, xto):
+    other_replacements.append((xfrom, xto))
+
+# Find all `<...>` pair ranges
+def find_angles(s, xi_start, xi_end):
+    open_angles = []
+
+    for i in range(xi_start, xi_end):
+        if s[i-1] != ' ' and s[i] == '<':
+            open_angles.append(i)
+
+        elif s[i-1] != '-' and s[i] == '>':
+            if len(open_angles) == 0:
+                continue
+
+            depth = len(open_angles)
+            x = open_angles.pop()
+            angle_pairs.append((x, i+1, depth))
+
+# Mark a `<...>` pair for removal
+def mark(i_start, i_end):
+    marked.append((i_start + 1, i_end - 1))
+
+# Yield merged overlapping intervals
+# (From 'http://codereview.stackexchange.com/questions/69242')
+def merged(intervals):
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+
+    if not sorted_intervals:  # no intervals to merge
+        return
+
+    # low and high represent the bounds of the current run of merges
+    low, high = sorted_intervals[0]
+
+    for iv in sorted_intervals[1:]:
+        if iv[0] <= high:  # new interval overlaps current run
+            high = max(high, iv[1])  # merge with the current run
+        else:  # current run is over
+            yield low, high  # yield accumulated interval
+            low, high = iv  # start new run
+
+    yield low, high  # end the final run
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Configuration keys
+# -----------------------------------------------------------------------------------------------------------
+
+ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
+ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
+ckEnableGenericReplacements = 'enableGenericReplacements'
+ckTemplateCollapsingDepth = 'templateCollapsingDepth'
+ckConfigPaths = 'configPaths'
+ckNamespaceReplacements = 'namespaceReplacements'
+ckGenericReplacements = 'genericReplacements'
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Configuration/arg parsing
+# -----------------------------------------------------------------------------------------------------------
 
+def addFeatureOpt(ap, flagName, key, defaultValue, helpStr):
+    ap_feature = ap.add_mutually_exclusive_group(required=False)
+    ap_feature.add_argument('--' + flagName, dest=key, action='store_true', help="| Control " + helpStr)
+    ap_feature.add_argument('--no-' + flagName, dest=key, action='store_false', help="'")
+    ap.set_defaults(**{key:defaultValue})
 
-TODO: change '-c a b c' with '-c"a b c"'
+def makeArgParser():
+    ap = argparse.ArgumentParser(\
+        formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
 
+    addFeatureOpt(ap, 'template-collapsing', ckEnableTemplateCollapsing, True, \
+        "template collapsing")
 
-## What is it?
+    addFeatureOpt(ap, 'namespace-replacements', ckEnableNamespaceReplacements, True, \
+        "namespace replacements")
 
-`camomilla` is a simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
+    addFeatureOpt(ap, 'generic-replacements', ckEnableGenericReplacements, True, \
+        "generic replacements")
 
-`camomilla` perform the following text transformations:
+    ap.add_argument('-d', '--depth', \
+        help="Template collapsing depth", \
+        type=int, default=1, dest=ckTemplateCollapsingDepth, metavar='X')
 
-1. **Template typename collapsing.**
+    ap.add_argument('-c', '--config', \
+        help="Configuration file path(s)", \
+        nargs='*', type=str, default="", dest=ckConfigPaths, metavar='P')
 
-    Nested template typenames are collapsed to a specific user-defined depth. This is the most useful transformation executed by `camomilla`. Example:
+    return ap
 
-    ```bash
-    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d0
-    # outputs
-    metavector<?>::method()
+def jsonPrettyPrint(x):
+    print(json.dumps(x, sort_keys=True, indent=4, separators=(',', ': ')))
 
-    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d1
-    # outputs
-    metavector<metatype<?>>::method()
+def debugPrintArgs(args):
+    print("Template collapsing: {}".format("on" if args[ckEnableTemplateCollapsing] else "off"))
+    print("Namespace replacements: {}".format("on" if args[ckEnableNamespaceReplacements] else "off"))
+    print("Generic replacements: {}".format("on" if args[ckEnableGenericReplacements] else "off"))
+    print("Template collapsing depth: {}".format(args[ckTemplateCollapsingDepth]))
+    print("Config path(s): {}".format(args[ckConfigPaths]))
 
-    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d2
-    # outputs
-    metavector<metatype<metawhatever<?>>>::method()
+def propagateArgOverride(key, origin, target):
+    if key in origin.keys():
+        target[key] = origin[key]
 
-    echo "metavector<metatype<metawhatever<int>>>::method()" | camomilla -d3
-    # outputs
-    metavector<metatype<metawhatever<int>>>::method()
-    ```
+def propagateReplacements(key, origin, target):
+    if key in origin.keys():
+        for x in origin[key]:
+            target[key].add(tuple(x))
 
-    This is incredibly useful when using template metaprogramming libraries, that usually internally nest a huge amount of wrappers.
+def propagateConfigPaths(key, origin, target):
+    if key in origin.keys():
+        for x in origin[key]:
+            target[key].add(x)
 
-2. **Namespace replacement regexes.**
+def loadConfig(path):
+    with open(path) as data:
+        j = json.load(data)
+        res = {
+            "namespaceReplacements": set(),
+            "genericReplacements": set(),
+            "configPaths": set()
+        }
 
-    A simple transformation from a long namespace symbol to a shorter *(or absent)* one.
+        propagateArgOverride(ckEnableNamespaceReplacements, j, res)
+        propagateArgOverride(ckEnableGenericReplacements, j, res)
+        propagateArgOverride(ckEnableTemplateCollapsing, j, res)
+        propagateArgOverride(ckTemplateCollapsingDepth, j, res)
 
-    ```bash
-    echo "std::vector<std::pair<std::int16_t, std::int32_t>>" | camomilla --depth=100
-    # outputs
-    vector<pair<int16_t, int32_t>>
+        propagateReplacements(ckNamespaceReplacements, j, res)
+        propagateReplacements(ckGenericReplacements, j, res)
 
-    echo "boost::hana::tuple<boost::hana::tuple<boost::hana::int_c<10>, boost::hana::int_c<15>>>" | camomilla -d100
-    # outputs
-    bh::tuple<bh::tuple<bh::int_c<10>, bh::int_c<15>>>
-    ```
+        propagateConfigPaths(ckConfigPaths, j, res)
 
-3. **Tuple/pair replacements.**
+        return res
 
-    TODO
+# TODO:
+class Camomilla:
+    def __init__(self, conf):
+        self._conf = conf
 
-4. **Generic replacement regexes.**
+    def namespaceReplacements(self):
+        return self._conf[ckNamespaceReplacements]
 
-    ```bash
-    echo "std::forward<decltype(std::tuple<unsigned long long, std::size_t, int>)>(x)" | camomilla -d100
-    # outputs
-    fwd<decltype(tuple<ulong long, sz_t, int>)>(x)
-    ```
+    def genericReplacements(self):
+        return self._conf[ckGenericReplacements]
 
+    def templateCollapsingDepth(self):
+        return self._conf[ckTemplateCollapsingDepth]
 
+    def enableNamespaceReplacements(self):
+        return self._conf[ckEnableNamespaceReplacements]
 
-## Usage
+    def enableGenericReplacements(self):
+        return self._conf[ckEnableGenericReplacements]
 
-### Compiling with `camomilla`
+    def enableTemplateCollapsing(self):
+        return self._conf[ckEnableTemplateCollapsing]
 
-TODO: design, implement and test
 
-TODO: ideally should be able to alias gcc:
+def addNamespaceReplacement(ctx, xfrom, to):
+    ctx.namespaceReplacements.append((xfrom, xto))
+    print("Added ns replacement: '{}' -> '{}'".format(xfrom, to))
 
-```bash
-alias cm_g++='camomilla -d2 -c"c0.json c1.json" g++'
-alias cm_clang++='camomilla -d2 -c"c0.json c1.json" clang++'
-```
+def addGenericReplacement(ctx, xfrom, to):
+    ctx.genericReplacements.append((xfrom, xto))
+    print("Added generic replacement: '{}' -> '{}'".format(xfrom, to))
 
-```bash
-cm_g++ ./x.cpp
-```
+def mergeConfig(parent, x):
+    # Recursively merge configs
+    if "configPaths" in x.keys():
+        for child in x["configPaths"]:
+            x = mergeConfig(x, loadConfig(child))
 
-TODO: should implement like:
+    propagateArgOverride("enableNamespaceReplacements", x, parent)
+    propagateArgOverride("enableGenericReplacements", x, parent)
+    propagateArgOverride("enableTemplateCollapsing", x, parent)
+    propagateArgOverride("templateCollapsingDepth", x, parent)
 
-1) look for extra arguments with ap.parse_known_args() or ap.REMAINDER
+    propagateReplacements("namespaceReplacements", x, parent)
+    propagateReplacements("genericReplacements", x, parent)
 
-2) use os.system ??
+    return parent
 
+def makeFinalConfig():
+    ap = makeArgParser()
+    args = ap.parse_args()
 
-### Error redirection
+    conf = vars(args)
 
-TODO: test
+    # TODO: should be dictionaries
+    # TODO: overriding namespace/generic replacements depending on key should be possible
+    conf["namespaceReplacements"] = set()
+    conf["genericReplacements"] = set()
 
-Errors produced by compilers can easily be piped into `camomilla`:
+    print("\n\n")
+    debugPrintArgs(conf)
 
-```bash
-# Pipe both `stdout` and `stderr` into `camomilla`
-g++ ./x.cpp |& camomilla -d5
-```
+    print("\n\n")
+    pp.pprint(conf)
 
-If `|&` is not supported by your shell or you want to compare the original error to the processed one, using a temporary file is a good solution:
+    print("\n\n")
+    for child in conf["configPaths"]:
+        conf = mergeConfig(conf, loadConfig(child))
 
-```bash
-# Redirect both `stdout` and `stderr` into `error.out`
-g++ ./x.cpp &> error.out
+    print("\n\n")
+    pp.pprint(conf)
 
-# Process the error
-cat error | camomilla -d2
-```
+    print("\n\n")
+    debugPrintArgs(conf)
 
+    return conf
 
-## Configuration
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------------------------------------
 
-### Basic command-line options
+def main():
+    conf = makeFinalConfig()
+    camomilla = Camomilla(conf)
 
-#### Enable/disable transformations
+    pp.pprint(camomilla.namespaceReplacements())
+    pp.pprint(camomilla.genericReplacements())
 
-Error text transformations can be turned on and off individually by using the following flags. All transformations are **on** by default.
+    return 0
 
-```bash
-# Template typename collapsing
---template-collapsing
---no-template-collapsing
+if __name__ == "__main__":
+    sys.exit(main())
 
-# Namespace replacement regexes
---namespace-replacements
---no-namespace-replacements
 
-# Tuple/pair replacements
---tuple-pair-replacements
---no-tuple-pair-replacements
 
-# Generic replacement regexes
---generic-replacements
---no-generic-replacements
-```
 
-#### Options - template typename collapsing
 
-The depth of the *template typename collapsing* transformation can be specified with the `-d` *(or `--depth`)* flag.
 
-```bash
-# Collapse all templates with depth `>= 5`
-camomilla -d5
 
-# Collapse all templates with depth `>= 100`
-camomilla --depth=100
-```
 
 
 
 
-### Configuration files
+# TODO: flags to enable/disable
+# TODO: config files!!!
+# TODO: tuple<a, b, c> -> @(a, b, c)
+# TODO: pair<a, b> -> @(a, b)
 
-Configurations files are JSON documents that allow users to define their *namespace replacement regexes* and *generic replacement regexes*. They also allow users to override command-line arguments *(or set unspecified options)*. Configuration files can refer to each other recursively.
 
-#### Using configuration files
+# Namespace replacements
+ns_replacement(r'std', r'')
+ns_replacement(r'boost::hana', r'bh')
+ns_replacement(r'boost::fusion', r'bf')
+ns_replacement(r'boost::spirit', r'bs')
 
-Any number of configuration file paths can be passed to `camomilla` through the `-c` *(or `--config`)* flag. Configuration files are read sequentially *(the order matters for option overriding)*.
+# TODO: case insensitive
+ns_replacement(r'impl', r'_')
+ns_replacement(r'implementation', r'_')
+ns_replacement(r'detail', r'_')
 
-```bash
-# Executes `camomilla` reading `conf0.json`
-camomilla -c"conf0.json"
+# TODO: vrm specific
+ns_replacement(r'vrm::core', r'vrmc')
 
-# Executes `camomilla` reading `conf0.json` first, then `conf1.json`
-camomilla -c"conf0.json conf1.json"
-```
+# TODO: ecst specific
+ns_replacement(r'ecst', r'')
+ns_replacement(r'system_execution_adapter', r'sea')
+ns_replacement(r'context', r'ctx')
+ns_replacement(r'tag::system', r'tag_s')
+ns_replacement(r'tag::component', r'tag_c')
 
-Here's a more complex example:
+# Non-namespace replacements
+replacement(r'integral_constant', r'ic')
+replacement(r'lambda\(', r'[](')
+replacement(r'size_t', r'sz_t')
+replacement(r'unsigned ', r'u')
+replacement(r'long u', r'ul')
+replacement(r'type_impl', r'type')
+replacement(r'tag_impl', r'tag')
+replacement(r'forward', r'fwd')
+replacement(r'<>', r'<?>')
 
-```bash
-# Executes `camomilla` with:
-# * Template typename collapsing depth: 4
-# * Namespace replacement regexes: off
-# * Reading the `~/camomilla_configs/test.json` file
-camomilla -d4 --no-namespace-replacements -c"~/camomilla_configs/test.json"
+# Find all angle bracket pairs
+find_angles(src, 0, len(src))
 
-# `test.json` may:
-# * Override the specified depth
-# * Override the specified `--no-namespace-replacements` option
-# * Set unspecified options (e.g. `--no-generic-replacements`)
-```
+# Mark pairs matching desired depth for removal
+for p in angle_pairs:
+    if p[2] > desired_depth:
+        mark(p[0], p[1])
 
-#### Writing configuration files
+# Build output string by avoiding marked intervals
+last = 0
+for m in merged(marked):
+    out += src[last:m[0]]
+    last = m[1]
+out += src[last:len(src)]
 
-Configuration files are written in JSON. Here's an example file with complete syntax:
+# Replace namespaces
+for nr in namespace_replacements:
+    out = re.sub(nr[0] + r'::', nr[1] + r'::' if len(nr[1]) > 0 else '', out)
 
-```javascript
-{
-    // Set/override options
-    "enableTemplateCollapsing": false,
-    "enableNamespaceReplacements": false,
-    "enableTuplePairReplacements": false,
-    "enableGenericReplacements": false,
-    "templateCollapsingDepth": 10,
+# Replace everything else
+for r in other_replacements:
+    out = re.sub(r[0], r[1], out)
 
-    // Add namespace replacements
-    "namespaceReplacements": [
-        ["std", ""],
-        ["boost::hana", "bh"],
-        ["boost::fusion", "bf"],
-        ["boost::spirit", "bs"]
-    ],
-
-    // Add generic replacements
-    "genericReplacements" : [
-        ["tuple", "tpl"],
-        ["forward", "fwd"]
-    ],
-
-    // Include other config files
-    "configPaths": [
-        "~/camomilla_configs/boost_spirit.json",
-        "~/camomilla_configs/limit_template_depth.json"
-    ]
-}
-```
-
-#### Multiple configuration files
-
-When multiple configuration files are passed as command-line arguments, or if any configuration file "includes" another file, the behavior is as follows:
-
-* Options, such as `enableTemplateCollapsing` or `templateCollapsingDepth`, are **overridden** or set.
-
-    * Previously set options will be potentially overwritten by the next configuration file(s).
-
-* Namespace replacements and generic replacements will be **accumulated** or **overridden**.
-
-    * If a configuration file has a replacement with the same key as a previous one, its value will be overridden.
-
-    * If a configuration file defines a replacement that wasn't previously seen, it will be added without replacing any existing replacement.
-
-
-## TODO
-
-* Look for TODOs in script.
-
-* gcc, g++, clang, clang++ aliases that pass error to camomilla.
-
-* Makefile/install script.
-
-* --depth=-1 or --alldepth or whatever.
-
-* Flags to control transformations.
-
-* Reading from config file.
-
-* Refactor code.
-
-* --help -h
-
-* Blog article.
-
-* Table in README with kbs/wordcount before/after.
+# Print result
+print(out)
