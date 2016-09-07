@@ -10,6 +10,9 @@ import re
 import time
 import argparse
 import json
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
 
 def parseDepthArg(x):
     shortPrefix = '-d'
@@ -116,38 +119,84 @@ def debugPrintArgs(args):
     print("Template collapsing depth: {}".format(args["templateCollapsingDepth"]))
     print("Config path(s): {}".format(args["configPaths"]))
 
+def propagateArgOverride(key, origin, target):
+    if key in origin.keys():
+        target[key] = origin[key]
+
+
 def loadConfig(path):
     with open(path) as data:
-        res = json.load(data)
+        j = json.load(data)
+        res = {
+            "namespaceReplacements": set(),
+            "genericReplacements": set(),
+            "configPaths": set()
+        }
+
+        propagateArgOverride("enableNamespaceReplacements", j, res)
+        propagateArgOverride("enableGenericReplacements", j, res)
+        propagateArgOverride("enableTemplateCollapsing", j, res)
+        propagateArgOverride("templateCollapsingDepth", j, res)
+
+
+
+        if "namespaceReplacements" in j.keys():
+            for x in j["namespaceReplacements"]:
+                res["namespaceReplacements"].add(tuple(x))
+
+        if "genericReplacements" in j.keys():
+            for x in j["genericReplacements"]:
+                res["genericReplacements"].add(tuple(x))
+
+        if "configPaths" in j.keys():
+            for x in j["configPaths"]:
+                res["configPaths"].add(x)
+
         return res
 
-def addNamespaceReplacement(xfrom, to):
+class Context:
+    def __init__():
+        self.namespaceReplacements = []
+        self.genericReplacements = []
+
+def addNamespaceReplacement(ctx, xfrom, to):
+    ctx.namespaceReplacements.append((xfrom, xto))
     print("Added ns replacement: '{}' -> '{}'".format(xfrom, to))
 
-
-def addGenericReplacement(xfrom, to):
+def addGenericReplacement(ctx, xfrom, to):
+    ctx.genericReplacements.append((xfrom, xto))
     print("Added generic replacement: '{}' -> '{}'".format(xfrom, to))
 
 def mergeConfig(parent, x):
-    # Recursively merge configs
+    # Recursively load configs
     if "configPaths" in x.keys():
         for child in x["configPaths"]:
             x = mergeConfig(x, loadConfig(child))
 
-    # Special: namespace replacements
+    # Override args
+    propagateArgOverride("enableNamespaceReplacements", x, parent)
+    propagateArgOverride("enableGenericReplacements", x, parent)
+    propagateArgOverride("enableTemplateCollapsing", x, parent)
+    propagateArgOverride("templateCollapsingDepth", x, parent)
+
+    # Merge namespace replacements
     if "namespaceReplacements" in x.keys():
         for nsr in x["namespaceReplacements"]:
-            addNamespaceReplacement(*nsr)
+            print(nsr)
+            parent.setdefault("namespaceReplacements", set()).add(tuple(nsr))
+            #addNamespaceReplacement(*nsr)
 
-    # Special: namespace replacements
+    # Merge generic replacements
     if "genericReplacements" in x.keys():
         for nsr in x["genericReplacements"]:
+            print(nsr)
+            parent.setdefault("genericReplacements", set()).add(tuple(nsr))
             addGenericReplacement(*nsr)
 
     # Merge arguments
-    parentcopy = parent.copy()
-    parentcopy.update(x)
-    return parentcopy
+    #parentcopy = parent.copy()
+    #parentcopy.update(x)
+    return parent
 
 def main():
     ap = makeArgParser()
@@ -158,11 +207,14 @@ def main():
     debugPrintArgs(conf)
 
     print("\n\n")
-    jsonPrettyPrint(conf)
+    pp.pprint(conf)
 
     print("\n\n")
     for child in conf["configPaths"]:
         conf = mergeConfig(conf, loadConfig(child))
+
+    print("\n\n")
+    pp.pprint(conf)
 
     print("\n\n")
     debugPrintArgs(conf)
