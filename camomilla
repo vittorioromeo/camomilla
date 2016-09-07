@@ -176,10 +176,29 @@ def loadConfig(path):
 
         return res
 
-class Context:
-    def __init__():
-        self.namespaceReplacements = []
-        self.genericReplacements = []
+# TODO:
+class Camomilla:
+    def __init__(self, conf):
+        self._conf = conf
+
+    def namespaceReplacements(self):
+        return self._conf[ckNamespaceReplacements]
+
+    def genericReplacements(self):
+        return self._conf[ckGenericReplacements]
+
+    def templateCollapsingDepth(self):
+        return self._conf[ckTemplateCollapsingDepth]
+
+    def enableNamespaceReplacements(self):
+        return self._conf[ckEnableNamespaceReplacements]
+
+    def enableGenericReplacements(self):
+        return self._conf[ckEnableGenericReplacements]
+
+    def enableTemplateCollapsing(self):
+        return self._conf[ckEnableTemplateCollapsing]
+
 
 def addNamespaceReplacement(ctx, xfrom, to):
     ctx.namespaceReplacements.append((xfrom, xto))
