@@ -59,10 +59,6 @@ def writeTempConfigCache(contents):
     with open(fkCacheConfigFilePath, "w+") as f:
         f.write(contents)
 
-def readTempConfigCache():
-    with open(fkCacheConfigFilePath) as f:
-        return f.read()
-
 def writeTempCache(contents):
     with open(fkCacheFilePath, "w+") as f:
         f.write(contents)
@@ -86,6 +82,12 @@ def addFeatureOpt(ap, flagName, key, defaultValue, helpStr):
     ap_feature.add_argument('--no-' + flagName, dest=key, action='store_false', help="'")
     ap.set_defaults(**{key:defaultValue})
 
+def addFeatureOptS(ap, shortFlagName, longFlagName, key, defaultValue, helpStr):
+    ap_feature = ap.add_mutually_exclusive_group(required=False)
+    ap_feature.add_argument(shortFlagName, '--' + longFlagName, dest=key, action='store_true', help="| Control " + helpStr)
+    ap_feature.add_argument('--no-' + longFlagName, dest=key, action='store_false', help="'")
+    ap.set_defaults(**{key:defaultValue})
+
 def makeArgParser():
     ap = argparse.ArgumentParser(\
         formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
@@ -102,7 +104,7 @@ def makeArgParser():
     addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, True, \
         "temp cache")
 
-    addFeatureOpt(ap, akReprocess, ckReprocess, False, \
+    addFeatureOptS(ap, '-r', akReprocess, ckReprocess, False, \
         "Reprocess previous source")
 
     addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, True, \
@@ -188,6 +190,9 @@ class Camomilla:
     def enableTempCache(self):
         return self._conf[ckEnableTempCache]
 
+    def reprocess(self):
+        return self._conf[ckReprocess]
+
     # Find all `<...>` pair ranges
     def _find_angles(self, s, xi_start, xi_end):
         result_angle_pairs = []
@@ -254,7 +259,8 @@ class Camomilla:
 
         # Write temp cache ______________________________________
         #
-        if self.enableTempCache():
+        print(self.reprocess())
+        if self.reprocess() == False and self.enableTempCache():
             # Cache source error
             writeTempCache(src)
 
@@ -316,6 +322,14 @@ def mergeConfig(parent, x):
     propagateEverything(x, parent)
     return parent
 
+def makeInitialBaseConfig():
+    conf = dict()
+    conf[ckNamespaceReplacements] = dict()
+    conf[ckGenericReplacements] = dict()
+    conf[ckConfigPaths] = []
+
+    return conf
+
 def makeInitialConfig(args):
     conf = vars(args[0])
     conf[ckNamespaceReplacements] = dict()
@@ -358,15 +372,58 @@ def makeFinalConfig():
 
 def main():
     conf = makeFinalConfig()
-    camomilla = Camomilla(conf)
 
     # If reprocessing with previous config, load it and override with command line
     if conf[ckReprocess] and conf[ckReprocessPrevConfig]:
-        ap = makeArgParser()
-        args = ap.parse_known_args()
-        conf = makeInitialConfig(args)
+        conf = makeInitialBaseConfig()
         conf = mergeConfig(conf, loadConfig(fkCacheConfigFilePath))
-        conf = mergeConfig(conf, makeInitialConfig(args))
+
+        # TODO: refactor
+
+        ap = argparse.ArgumentParser(\
+            formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
+
+        addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, None, \
+            "template collapsing")
+
+        addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, None, \
+            "namespace replacements")
+
+        addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, None, \
+            "generic replacements")
+
+        addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, None, \
+            "temp cache")
+
+        ap.add_argument('-d', '--depth', \
+            help="Template collapsing depth", \
+            type=int, default=None, dest=ckTemplateCollapsingDepth, metavar='X')
+
+        ap.add_argument('-c', '--config', \
+            help="Configuration file path(s)", \
+            type=str, default=None, dest=ckConfigPaths, metavar='P')
+
+        args = vars(ap.parse_known_args()[0])
+
+        def pifsetArg(k):
+            if k in args and args[k] != None:
+                propagateArgOverride(k, args, conf)
+
+        def pifsetReplacements(k):
+            if k in args and args[k] != None:
+                propagateReplacements(k, args, conf)
+
+        pifsetArg(ckEnableNamespaceReplacements)
+        pifsetArg(ckEnableGenericReplacements)
+        pifsetArg(ckEnableTemplateCollapsing)
+        pifsetArg(ckEnableTempCache)
+        pifsetArg(ckTemplateCollapsingDepth)
+        pifsetReplacements(ckNamespaceReplacements)
+        pifsetReplacements(ckGenericReplacements)
+
+        conf[ckReprocess] = True
+
+    camomilla = Camomilla(conf)
 
     # Read from temp cache if reprocessing, otherwise from stdin
     src = readTempCache() if conf[ckReprocess] else sys.stdin.read()
