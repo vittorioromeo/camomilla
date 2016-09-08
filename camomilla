@@ -48,12 +48,14 @@ ckCompilationCommand = 'compilationCommand'
 # Cache
 # -----------------------------------------------------------------------------------------------------------
 
+fkCacheFilePath =tempfile.gettempdir() + "/lastCamomilla.out"
+
 def writeTempCache(contents):
-    with open(tempfile.gettempdir() + "/lastCamomilla.out", "w+") as f:
+    with open(fkCacheFilePath, "w+") as f:
         f.write(contents)
 
 def readTempCache():
-    with open(tempfile.gettempdir() + "/lastCamomilla.out") as f:
+    with open(fkCacheFilePath) as f:
         return f.read()
 
 
