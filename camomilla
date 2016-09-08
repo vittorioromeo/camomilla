@@ -100,6 +100,7 @@ ckTemplateCollapsingDepth = 'templateCollapsingDepth'
 ckConfigPaths = 'configPaths'
 ckNamespaceReplacements = 'namespaceReplacements'
 ckGenericReplacements = 'genericReplacements'
+ckCompilationCommand = 'compilationCommand'
 
 #
 #
@@ -134,6 +135,10 @@ def makeArgParser():
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
         type=str, default="", dest=ckConfigPaths, metavar='P')
+
+    ap.add_argument('-x', '--exec', \
+        help="Execute compilation command", \
+        type=str, default="", nargs=argparse.REMAINDER, dest=ckCompilationCommand, metavar='X')
 
     return ap
 
@@ -230,39 +235,26 @@ def mergeConfig(parent, x):
 
     return parent
 
-siModeTty = 0
-siModeRead = 1
 
-def detectStdin():
-    mode = os.fstat(sys.stdin.fileno()).st_mode
-    if stat.S_ISFIFO(mode) or stat.S_ISREG(mode):
-        return siModeRead
-    else:
-        return siModeTty
+def makeInitialConfig(args):
+    conf = vars(args[0])
+    conf[ckNamespaceReplacements] = dict()
+    conf[ckGenericReplacements] = dict()
+    conf[ckConfigPaths] = conf[ckConfigPaths].split(' ')
+    return conf
 
 def makeFinalConfig():
     ap = makeArgParser()
     args = ap.parse_known_args()
+    conf = makeInitialConfig(args)
 
+    compilationCmd = ' '.join(conf[ckCompilationCommand])
 
-
-    conf = vars(args[0])
-
-    remaining_cmdline = ' '.join(args[1])
-    pp.pprint(remaining_cmdline)
-
-    siMode = detectStdin()
-    if siMode == siModeRead:
-        print("READING FROM FILE/PIPE")
-        print("SRC = " + sys.stdin.read())
+    if compilationCmd == "":
+        src = sys.stdin.read()
     else:
-        print("USER INPUT XD")
-        os.system(remaining_cmdline + " ")
-
-
-    conf[ckNamespaceReplacements] = dict()
-    conf[ckGenericReplacements] = dict()
-    conf[ckConfigPaths] = conf[ckConfigPaths].split(' ')
+        print("Warning: stdin data will be ignored because '-x' is being used.")
+        os.system('(' + compilationCmd + ')')
 
     print("\n\n")
     debugPrintArgs(conf)
