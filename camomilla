@@ -231,14 +231,20 @@ class Camomilla:
         out = ""
         marked = []
 
+        # Write temp cache ______________________________________
+        #
         if self.enableTempCache():
             # Cache source error
             writeTempCache(src)
+        # _______________________________________________________
+        #
 
-        # Find all angle bracket pairs
-        angle_pairs = self._find_angles(src, 0, len(src))
-
+        # Template collapsing ___________________________________
+        #
         if self.enableTemplateCollapsing():
+            # Find all angle bracket pairs
+            angle_pairs = self._find_angles(src, 0, len(src))
+
             # Mark pairs matching desired depth for removal
             for p in angle_pairs:
                 if p[2] > self.templateCollapsingDepth():
@@ -250,23 +256,32 @@ class Camomilla:
                 out += src[last:m[0]]
                 last = m[1]
             out += src[last:len(src)]
+        # _______________________________________________________
+        #
 
+        # Namespace replacements_________________________________
+        #
         if self.enableNamespaceReplacements():
             # Replace namespace matches
             out = self._multiple_replace( \
                 lambda k: k + r'::', \
                 lambda v: v + r'::' if len(v) > 0 else '', \
                 self.namespaceReplacements(), out)
+        # _______________________________________________________
+        #
 
+        # Generic replacements __________________________________
+        #
         if self.enableGenericReplacements():
             # Replace generic matches
             out = self._multiple_replace( \
                 lambda k: k, \
                 lambda v: v, \
                 self.genericReplacements(), out)
+        # _______________________________________________________
+        #
 
-        # Print result
-        print(out)
+        return out
 
 def mergeConfig(parent, x):
     # Recursively merge configs
@@ -320,7 +335,7 @@ def makeFinalConfig():
 def main():
     conf = makeFinalConfig()
     camomilla = Camomilla(conf)
-    camomilla.process(sys.stdin.read())
+    print(camomilla.process(sys.stdin.read()))
 
     # pp.pprint(camomilla.namespaceReplacements())
     # pp.pprint(camomilla.genericReplacements())
