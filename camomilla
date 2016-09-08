@@ -164,6 +164,9 @@ class Camomilla:
     def enableTemplateCollapsing(self):
         return self._conf[ckEnableTemplateCollapsing]
 
+    def enableTempCache(self):
+        return self._conf[ckEnableTempCache]
+
     # Find all `<...>` pair ranges
     def _find_angles(self, s, xi_start, xi_end):
         result_angle_pairs = []
