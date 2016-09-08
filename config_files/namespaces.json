@@ -1,7 +1,4 @@
 {
-    "enableGenericReplacements": true,
-    "templateCollapsingDepth": 1,
-
     "namespaceReplacements":
     {
         "std": "",

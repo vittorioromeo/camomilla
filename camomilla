@@ -88,35 +88,46 @@ def addFeatureOptS(ap, shortFlagName, longFlagName, key, defaultValue, helpStr):
     ap_feature.add_argument('--no-' + longFlagName, dest=key, action='store_false', help="'")
     ap.set_defaults(**{key:defaultValue})
 
-def makeArgParser():
+def makeArgParser(noDefaults, parseReprocess):
     ap = argparse.ArgumentParser(\
         formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
 
-    addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, True, \
+    addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, \
+        None if noDefaults else True, \
         "template collapsing")
 
-    addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, True, \
+    addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, \
+        None if noDefaults else True, \
         "namespace replacements")
 
-    addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, True, \
+    addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, \
+        None if noDefaults else True, \
         "generic replacements")
 
-    addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, True, \
-        "temp cache")
+    if parseReprocess:
+        addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, \
+            None if noDefaults else True, \
+            "temp cache")
 
-    addFeatureOptS(ap, '-r', akReprocess, ckReprocess, False, \
-        "Reprocess previous source")
+        addFeatureOptS(ap, '-r', akReprocess, ckReprocess, \
+            None if noDefaults else False, \
+            "Reprocess previous source")
 
-    addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, True, \
-        "Reprocess with previous configuration")
+        addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, \
+            None if noDefaults else True, \
+            "Reprocess with previous configuration")
 
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
-        type=int, default=1, dest=ckTemplateCollapsingDepth, metavar='X')
+        type=int, \
+        default=None if noDefaults else 1, \
+        dest=ckTemplateCollapsingDepth, metavar='X')
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        type=str, default="", dest=ckConfigPaths, metavar='P')
+        type=str, \
+        default=None if noDefaults else "", \
+        dest=ckConfigPaths, metavar='P')
 
     # TODO:
     #
@@ -126,17 +137,20 @@ def makeArgParser():
 
     return ap
 
+def canPropagate(key, origin):
+    return key in origin.keys() and origin[key] != None
+
 def propagateArgOverride(key, origin, target):
-    if key in origin.keys():
+    if canPropagate(key, origin):
         target[key] = origin[key]
 
 def propagateReplacements(key, origin, target):
-    if key in origin.keys():
+    if canPropagate(key, origin):
         for k, v in origin[key].items():
             target[key][k] = v
 
 def propagateConfigPaths(key, origin, target):
-    if key in origin.keys():
+    if canPropagate(key, origin):
         for x in origin[key]:
             target[key].add(x)
 
@@ -144,7 +158,10 @@ def propagateEverything(origin, target):
     propagateArgOverride(ckEnableNamespaceReplacements, origin, target)
     propagateArgOverride(ckEnableGenericReplacements, origin, target)
     propagateArgOverride(ckEnableTemplateCollapsing, origin, target)
-    propagateArgOverride(ckEnableTempCache, origin, target)
+    
+    # TODO: ?
+    # propagateArgOverride(ckEnableTempCache, origin, target)
+    
     propagateArgOverride(ckTemplateCollapsingDepth, origin, target)
 
     propagateReplacements(ckNamespaceReplacements, origin, target)
@@ -246,6 +263,7 @@ class Camomilla:
         mapped_dict = {k_mapper(k): v_mapper(v) for k, v in xdict.items()}
 
         # Create a regular expression  from the dictionary keys
+        # TODO: support regexes
         escaped_keys = map(re.escape, mapped_dict.keys())
         joined_regex_matcher = "({})".format("|".join(escaped_keys))
         regex = re.compile(joined_regex_matcher)
@@ -259,7 +277,6 @@ class Camomilla:
 
         # Write temp cache ______________________________________
         #
-        print(self.reprocess())
         if self.reprocess() == False and self.enableTempCache():
             # Cache source error
             writeTempCache(src)
@@ -271,6 +288,7 @@ class Camomilla:
 
         # Template collapsing ___________________________________
         #
+        
         if self.enableTemplateCollapsing():
             # Find all angle bracket pairs
             angle_pairs = self._find_angles(src, 0, len(src))
@@ -286,6 +304,8 @@ class Camomilla:
                 out += src[last:m[0]]
                 last = m[1]
             out += src[last:len(src)]
+        else:
+            out = src
         # _______________________________________________________
         #
 
@@ -342,7 +362,7 @@ def makeInitialConfig(args):
     return conf
 
 def makeFinalConfig():
-    ap = makeArgParser()
+    ap = makeArgParser(False, True)
     args = ap.parse_known_args()
     conf = makeInitialConfig(args)
 
@@ -361,6 +381,25 @@ def makeFinalConfig():
 
     return conf
 
+def confDispatch():
+    conf = makeFinalConfig()
+
+    # If reprocessing with previous config, load it and override with command line
+    if conf[ckReprocess] and conf[ckReprocessPrevConfig]: 
+        conf = mergeConfig(makeInitialBaseConfig(), loadConfig(fkCacheConfigFilePath))
+
+        ap = makeArgParser(True, False)
+        args = vars(ap.parse_known_args()[0])
+        propagateEverything(args, conf)
+        
+        if canPropagate(ckConfigPaths, args):
+            for child in args[ckConfigPaths].split(' '):
+                conf = mergeConfig(conf, loadConfig(child))
+
+        conf[ckReprocess] = True
+        conf[ckEnableTempCache] = False
+
+    return conf
 
 
 #
@@ -371,58 +410,7 @@ def makeFinalConfig():
 # -----------------------------------------------------------------------------------------------------------
 
 def main():
-    conf = makeFinalConfig()
-
-    # If reprocessing with previous config, load it and override with command line
-    if conf[ckReprocess] and conf[ckReprocessPrevConfig]:
-        conf = makeInitialBaseConfig()
-        conf = mergeConfig(conf, loadConfig(fkCacheConfigFilePath))
-
-        # TODO: refactor
-
-        ap = argparse.ArgumentParser(\
-            formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
-
-        addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, None, \
-            "template collapsing")
-
-        addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, None, \
-            "namespace replacements")
-
-        addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, None, \
-            "generic replacements")
-
-        addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, None, \
-            "temp cache")
-
-        ap.add_argument('-d', '--depth', \
-            help="Template collapsing depth", \
-            type=int, default=None, dest=ckTemplateCollapsingDepth, metavar='X')
-
-        ap.add_argument('-c', '--config', \
-            help="Configuration file path(s)", \
-            type=str, default=None, dest=ckConfigPaths, metavar='P')
-
-        args = vars(ap.parse_known_args()[0])
-
-        def pifsetArg(k):
-            if k in args and args[k] != None:
-                propagateArgOverride(k, args, conf)
-
-        def pifsetReplacements(k):
-            if k in args and args[k] != None:
-                propagateReplacements(k, args, conf)
-
-        pifsetArg(ckEnableNamespaceReplacements)
-        pifsetArg(ckEnableGenericReplacements)
-        pifsetArg(ckEnableTemplateCollapsing)
-        pifsetArg(ckEnableTempCache)
-        pifsetArg(ckTemplateCollapsingDepth)
-        pifsetReplacements(ckNamespaceReplacements)
-        pifsetReplacements(ckGenericReplacements)
-
-        conf[ckReprocess] = True
-
+    conf = confDispatch()
     camomilla = Camomilla(conf)
 
     # Read from temp cache if reprocessing, otherwise from stdin

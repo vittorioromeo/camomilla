@@ -1,6 +1,4 @@
 {
-    "enableTemplateCollapsing": false,
-
     "namespaceReplacements": 
     {
         "ecstTEST": "ecstrrr",

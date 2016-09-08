@@ -5,7 +5,8 @@
         "lambda(": "[?](",
         "size_t": "sz_t",
         "unsigned ": "u",
-        "long u": "ul",
+        "long unsigned": "ul",
+        "unsigned long": "ul",
         "type_impl": "type",
         "tag_impl": "tag",
         "forward": "fwd"
