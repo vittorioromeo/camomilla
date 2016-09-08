@@ -2,6 +2,6 @@
     "namespaceReplacements": 
     {
         "ecstTEST": "ecstrrr",
-        "boost::hana": "dio"
+        "boost::hana": "bsth"
     }
 }
