@@ -1,8 +1,8 @@
 {
-    "enableGenericReplacements": false,
-    "templateCollapsingDepth": 5,
+    "enableGenericReplacements": true,
+    "templateCollapsingDepth": 1,
 
-    "namespaceReplacements": 
+    "namespaceReplacements":
     {
         "std": "",
         "boost::hana": "bh",

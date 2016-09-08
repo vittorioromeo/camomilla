@@ -1,6 +1,6 @@
 {
     "configPaths": ["./config_files/ecst_namespaces_inner.json"],
-    "namespaceReplacements": 
+    "namespaceReplacements":
     {
         "vrm::core": "vrmc",
         "ecst": "",

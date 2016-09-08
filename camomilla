@@ -5,82 +5,17 @@
 # MIT License page: https://opensource.org/licenses/MIT
 # http://vittorioromeo.info | vittorio.romeo@outlook.com
 
-import os
-import stat
-import sys
+import os, stat, sys
 import re
 import time
 import argparse
 import json
 import pprint
+import tempfile
 
 pp = pprint.PrettyPrinter(indent=4)
 
-def parseDepthArg(x):
-    shortPrefix = '-d'
-    longPrefix = '--depth='
 
-    if x.startswith(shortPrefix):
-        return int(x[len(shortPrefix):])
-
-    if x.startswith(longPrefix):
-        return int(x[len(longPrefix):])
-
-    return 0
-
-src = ""
-out = ""
-angle_pairs = []
-marked = []
-desired_depth = 0 if len(sys.argv) <= 1 else parseDepthArg(sys.argv[1])
-namespace_replacements = []
-other_replacements = []
-
-def ns_replacement(xfrom, xto):
-    namespace_replacements.append((xfrom, xto))
-
-def replacement(xfrom, xto):
-    other_replacements.append((xfrom, xto))
-
-# Find all `<...>` pair ranges
-def find_angles(s, xi_start, xi_end):
-    open_angles = []
-
-    for i in range(xi_start, xi_end):
-        if s[i-1] != ' ' and s[i] == '<':
-            open_angles.append(i)
-
-        elif s[i-1] != '-' and s[i] == '>':
-            if len(open_angles) == 0:
-                continue
-
-            depth = len(open_angles)
-            x = open_angles.pop()
-            angle_pairs.append((x, i+1, depth))
-
-# Mark a `<...>` pair for removal
-def mark(i_start, i_end):
-    marked.append((i_start + 1, i_end - 1))
-
-# Yield merged overlapping intervals
-# (From 'http://codereview.stackexchange.com/questions/69242')
-def merged(intervals):
-    sorted_intervals = sorted(intervals, key=lambda x: x[0])
-
-    if not sorted_intervals:  # no intervals to merge
-        return
-
-    # low and high represent the bounds of the current run of merges
-    low, high = sorted_intervals[0]
-
-    for iv in sorted_intervals[1:]:
-        if iv[0] <= high:  # new interval overlaps current run
-            high = max(high, iv[1])  # merge with the current run
-        else:  # current run is over
-            yield low, high  # yield accumulated interval
-            low, high = iv  # start new run
-
-    yield low, high  # end the final run
 
 #
 #
@@ -92,15 +27,36 @@ def merged(intervals):
 akEnableTemplateCollapsing = 'template-collapsing'
 akEnableNamespaceReplacements = 'namespace-replacements'
 akEnableGenericReplacements = 'generic-replacements'
+akEnableTempCache = 'temp-cache'
 
 ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
 ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
 ckEnableGenericReplacements = 'enableGenericReplacements'
+ckEnableTempCache = 'enableTempCache'
 ckTemplateCollapsingDepth = 'templateCollapsingDepth'
 ckConfigPaths = 'configPaths'
 ckNamespaceReplacements = 'namespaceReplacements'
 ckGenericReplacements = 'genericReplacements'
 ckCompilationCommand = 'compilationCommand'
+
+
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Cache
+# -----------------------------------------------------------------------------------------------------------
+
+def writeTempCache(contents):
+    with open(tempfile.gettempdir() + "/lastCamomilla.out", "w+") as f:
+        f.write(contents)
+
+def readTempCache():
+    with open(tempfile.gettempdir() + "/lastCamomilla.out") as f:
+        return f.read()
+
+
 
 #
 #
@@ -128,6 +84,9 @@ def makeArgParser():
     addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, True, \
         "generic replacements")
 
+    addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, True, \
+        "temp cache")
+
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
         type=int, default=1, dest=ckTemplateCollapsingDepth, metavar='X')
@@ -143,16 +102,6 @@ def makeArgParser():
     #     type=str, default="", nargs=argparse.REMAINDER, dest=ckCompilationCommand, metavar='X')
 
     return ap
-
-def jsonPrettyPrint(x):
-    print(json.dumps(x, sort_keys=True, indent=4, separators=(',', ': ')))
-
-def debugPrintArgs(args):
-    print("Template collapsing: {}".format("on" if args[ckEnableTemplateCollapsing] else "off"))
-    print("Namespace replacements: {}".format("on" if args[ckEnableNamespaceReplacements] else "off"))
-    print("Generic replacements: {}".format("on" if args[ckEnableGenericReplacements] else "off"))
-    print("Template collapsing depth: {}".format(args[ckTemplateCollapsingDepth]))
-    print("Config path(s): {}".format(args[ckConfigPaths]))
 
 def propagateArgOverride(key, origin, target):
     if key in origin.keys():
@@ -180,6 +129,7 @@ def loadConfig(path):
         propagateArgOverride(ckEnableNamespaceReplacements, j, res)
         propagateArgOverride(ckEnableGenericReplacements, j, res)
         propagateArgOverride(ckEnableTemplateCollapsing, j, res)
+        propagateArgOverride(ckEnableTempCache, j, res)
         propagateArgOverride(ckTemplateCollapsingDepth, j, res)
 
         propagateReplacements(ckNamespaceReplacements, j, res)
@@ -212,14 +162,102 @@ class Camomilla:
     def enableTemplateCollapsing(self):
         return self._conf[ckEnableTemplateCollapsing]
 
+    # Find all `<...>` pair ranges
+    def _find_angles(self, s, xi_start, xi_end):
+        result_angle_pairs = []
+        open_angles = []
 
-def addNamespaceReplacement(ctx, xfrom, to):
-    ctx.namespaceReplacements.append((xfrom, xto))
-    print("Added ns replacement: '{}' -> '{}'".format(xfrom, to))
+        for i in range(xi_start, xi_end):
+            if s[i-1] != ' ' and s[i] == '<':
+                open_angles.append(i)
 
-def addGenericReplacement(ctx, xfrom, to):
-    ctx.genericReplacements.append((xfrom, xto))
-    print("Added generic replacement: '{}' -> '{}'".format(xfrom, to))
+            elif s[i-1] != '-' and s[i] == '>':
+                if len(open_angles) == 0:
+                    continue
+
+                depth = len(open_angles)
+                x = open_angles.pop()
+                result_angle_pairs.append((x, i+1, depth))
+
+        return result_angle_pairs
+
+    # Mark a `<...>` pair for removal
+    def _mark(self, i_start, i_end):
+        return (i_start + 1, i_end - 1)
+
+    # Yield merged overlapping intervals
+    # (From 'http://codereview.stackexchange.com/questions/69242')
+    def _merged(self, intervals):
+        sorted_intervals = sorted(intervals, key=lambda x: x[0])
+
+        if not sorted_intervals:  # no intervals to merge
+            return
+
+        # low and high represent the bounds of the current run of merges
+        low, high = sorted_intervals[0]
+
+        for iv in sorted_intervals[1:]:
+            if iv[0] <= high:  # new interval overlaps current run
+                high = max(high, iv[1])  # merge with the current run
+            else:  # current run is over
+                yield low, high  # yield accumulated interval
+                low, high = iv  # start new run
+
+        yield low, high  # end the final run
+
+    # From http://stackoverflow.com/questions/15175142/
+    def _multiple_replace(self, k_mapper, v_mapper, xdict, src):
+        # Bail out if there are no replacements
+        if len(xdict) == 0:
+            return src
+
+        # Map keys and values in dictionary
+        mapped_dict = {k_mapper(k): v_mapper(v) for k, v in xdict.items()}
+
+        # Create a regular expression  from the dictionary keys
+        escaped_keys = map(re.escape, mapped_dict.keys())
+        joined_regex_matcher = "({})".format("|".join(escaped_keys))
+        regex = re.compile(joined_regex_matcher)
+
+        # For each match, look-up corresponding value in dictionary
+        return regex.sub(lambda x: mapped_dict[x.string[x.start():x.end()]], src)
+
+    def process(self, src):
+        out = ""
+        marked = []
+
+        # Find all angle bracket pairs
+        angle_pairs = self._find_angles(src, 0, len(src))
+
+        if self.enableTemplateCollapsing():
+            # Mark pairs matching desired depth for removal
+            for p in angle_pairs:
+                if p[2] > self.templateCollapsingDepth():
+                    marked.append(self._mark(p[0], p[1]))
+
+            # Build output string by avoiding marked intervals
+            last = 0
+            for m in self._merged(marked):
+                out += src[last:m[0]]
+                last = m[1]
+            out += src[last:len(src)]
+
+        if self.enableNamespaceReplacements():
+            # Replace namespace matches
+            out = self._multiple_replace( \
+                lambda k: k + r'::', \
+                lambda v: v + r'::' if len(v) > 0 else '', \
+                self.namespaceReplacements(), out)
+
+        if self.enableGenericReplacements():
+            # Replace generic matches
+            out = self._multiple_replace( \
+                lambda k: k, \
+                lambda v: v, \
+                self.genericReplacements(), out)
+
+        # Print result
+        print(out)
 
 def mergeConfig(parent, x):
     # Recursively merge configs
@@ -228,8 +266,9 @@ def mergeConfig(parent, x):
             x = mergeConfig(x, loadConfig(child))
 
     propagateArgOverride(ckEnableNamespaceReplacements, x, parent)
-    propagateArgOverride(ckGenericReplacements, x, parent)
+    propagateArgOverride(ckEnableGenericReplacements, x, parent)
     propagateArgOverride(ckEnableTemplateCollapsing, x, parent)
+    propagateArgOverride(ckEnableTempCache, j, res)
     propagateArgOverride(ckTemplateCollapsingDepth, x, parent)
 
     propagateReplacements(ckNamespaceReplacements, x, parent)
@@ -241,7 +280,11 @@ def makeInitialConfig(args):
     conf = vars(args[0])
     conf[ckNamespaceReplacements] = dict()
     conf[ckGenericReplacements] = dict()
-    conf[ckConfigPaths] = conf[ckConfigPaths].split(' ')
+    conf[ckConfigPaths] = [] if len(conf[ckConfigPaths]) == 0 else conf[ckConfigPaths].split(' ')
+
+    conf[ckNamespaceReplacements]["std"] = ""
+    conf[ckGenericReplacements]["<>"] = "<?>"
+
     return conf
 
 def makeFinalConfig():
@@ -264,6 +307,8 @@ def makeFinalConfig():
 
     return conf
 
+
+
 #
 #
 #
@@ -274,9 +319,10 @@ def makeFinalConfig():
 def main():
     conf = makeFinalConfig()
     camomilla = Camomilla(conf)
+    camomilla.process(sys.stdin.read())
 
-    pp.pprint(camomilla.namespaceReplacements())
-    pp.pprint(camomilla.genericReplacements())
+    # pp.pprint(camomilla.namespaceReplacements())
+    # pp.pprint(camomilla.genericReplacements())
 
     return 0
 
@@ -331,28 +377,3 @@ replacement(r'tag_impl', r'tag')
 replacement(r'forward', r'fwd')
 replacement(r'<>', r'<?>')
 
-# Find all angle bracket pairs
-find_angles(src, 0, len(src))
-
-# Mark pairs matching desired depth for removal
-for p in angle_pairs:
-    if p[2] > desired_depth:
-        mark(p[0], p[1])
-
-# Build output string by avoiding marked intervals
-last = 0
-for m in merged(marked):
-    out += src[last:m[0]]
-    last = m[1]
-out += src[last:len(src)]
-
-# Replace namespaces
-for nr in namespace_replacements:
-    out = re.sub(nr[0] + r'::', nr[1] + r'::' if len(nr[1]) > 0 else '', out)
-
-# Replace everything else
-for r in other_replacements:
-    out = re.sub(r[0], r[1], out)
-
-# Print result
-print(out)
