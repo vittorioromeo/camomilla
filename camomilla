@@ -28,6 +28,7 @@ akEnableTemplateCollapsing = 'template-collapsing'
 akEnableNamespaceReplacements = 'namespace-replacements'
 akEnableGenericReplacements = 'generic-replacements'
 akEnableTempCache = 'temp-cache'
+akReprocess = 'reprocess'
 
 ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
 ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
@@ -38,6 +39,7 @@ ckConfigPaths = 'configPaths'
 ckNamespaceReplacements = 'namespaceReplacements'
 ckGenericReplacements = 'genericReplacements'
 ckCompilationCommand = 'compilationCommand'
+ckReprocess = 'reprocess'
 
 
 
@@ -48,7 +50,7 @@ ckCompilationCommand = 'compilationCommand'
 # Cache
 # -----------------------------------------------------------------------------------------------------------
 
-fkCacheFilePath =tempfile.gettempdir() + "/lastCamomilla.out"
+fkCacheFilePath = tempfile.gettempdir() + "/lastCamomilla.out"
 
 def writeTempCache(contents):
     with open(fkCacheFilePath, "w+") as f:
@@ -88,6 +90,9 @@ def makeArgParser():
 
     addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, True, \
         "temp cache")
+
+    addFeatureOpt(ap, akReprocess, ckReprocess, False, \
+        "Reprocess previous source")
 
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
@@ -337,61 +342,13 @@ def makeFinalConfig():
 def main():
     conf = makeFinalConfig()
     camomilla = Camomilla(conf)
-    print(camomilla.process(sys.stdin.read()))
 
-    # pp.pprint(camomilla.namespaceReplacements())
-    # pp.pprint(camomilla.genericReplacements())
+    # Read from temp cache if reprocessing, otherwise from stdin
+    src = readTempCache() if conf[ckReprocess] else sys.stdin.read()
 
+    # Print processed error
+    print(camomilla.process(src))
     return 0
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-
-
-
-
-
-
-
-
-
-# TODO: flags to enable/disable
-# TODO: config files!!!
-# TODO: tuple<a, b, c> -> @(a, b, c)
-# TODO: pair<a, b> -> @(a, b)
-
-
-# Namespace replacements
-ns_replacement(r'std', r'')
-ns_replacement(r'boost::hana', r'bh')
-ns_replacement(r'boost::fusion', r'bf')
-ns_replacement(r'boost::spirit', r'bs')
-
-# TODO: case insensitive
-ns_replacement(r'impl', r'_')
-ns_replacement(r'implementation', r'_')
-ns_replacement(r'detail', r'_')
-
-# TODO: vrm specific
-ns_replacement(r'vrm::core', r'vrmc')
-
-# TODO: ecst specific
-ns_replacement(r'ecst', r'')
-ns_replacement(r'system_execution_adapter', r'sea')
-ns_replacement(r'context', r'ctx')
-ns_replacement(r'tag::system', r'tag_s')
-ns_replacement(r'tag::component', r'tag_c')
-
-# Non-namespace replacements
-replacement(r'integral_constant', r'ic')
-replacement(r'lambda\(', r'[](')
-replacement(r'size_t', r'sz_t')
-replacement(r'unsigned ', r'u')
-replacement(r'long u', r'ul')
-replacement(r'type_impl', r'type')
-replacement(r'tag_impl', r'tag')
-replacement(r'forward', r'fwd')
-replacement(r'<>', r'<?>')
-
