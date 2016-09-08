@@ -117,6 +117,16 @@ def propagateConfigPaths(key, origin, target):
         for x in origin[key]:
             target[key].add(x)
 
+def propagateEverything(origin, target):
+    propagateArgOverride(ckEnableNamespaceReplacements, origin, target)
+    propagateArgOverride(ckEnableGenericReplacements, origin, target)
+    propagateArgOverride(ckEnableTemplateCollapsing, origin, target)
+    propagateArgOverride(ckEnableTempCache, origin, target)
+    propagateArgOverride(ckTemplateCollapsingDepth, origin, target)
+
+    propagateReplacements(ckNamespaceReplacements, origin, target)
+    propagateReplacements(ckGenericReplacements, origin, target)
+
 def loadConfig(path):
     with open(path) as data:
         j = json.load(data)
@@ -126,15 +136,7 @@ def loadConfig(path):
             ckConfigPaths: set()
         }
 
-        propagateArgOverride(ckEnableNamespaceReplacements, j, res)
-        propagateArgOverride(ckEnableGenericReplacements, j, res)
-        propagateArgOverride(ckEnableTemplateCollapsing, j, res)
-        propagateArgOverride(ckEnableTempCache, j, res)
-        propagateArgOverride(ckTemplateCollapsingDepth, j, res)
-
-        propagateReplacements(ckNamespaceReplacements, j, res)
-        propagateReplacements(ckGenericReplacements, j, res)
-
+        propagateEverything(j, res)
         propagateConfigPaths(ckConfigPaths, j, res)
 
         return res
@@ -226,6 +228,10 @@ class Camomilla:
         out = ""
         marked = []
 
+        if self.enableTempCache():
+            # Cache source error
+            writeTempCache(src)
+
         # Find all angle bracket pairs
         angle_pairs = self._find_angles(src, 0, len(src))
 
@@ -265,15 +271,7 @@ def mergeConfig(parent, x):
         for child in x[ckConfigPaths]:
             x = mergeConfig(x, loadConfig(child))
 
-    propagateArgOverride(ckEnableNamespaceReplacements, x, parent)
-    propagateArgOverride(ckEnableGenericReplacements, x, parent)
-    propagateArgOverride(ckEnableTemplateCollapsing, x, parent)
-    propagateArgOverride(ckEnableTempCache, j, res)
-    propagateArgOverride(ckTemplateCollapsingDepth, x, parent)
-
-    propagateReplacements(ckNamespaceReplacements, x, parent)
-    propagateReplacements(ckGenericReplacements, x, parent)
-
+    propagateEverything(x, parent)
     return parent
 
 def makeInitialConfig(args):
