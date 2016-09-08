@@ -29,6 +29,7 @@ akEnableNamespaceReplacements = 'namespace-replacements'
 akEnableGenericReplacements = 'generic-replacements'
 akEnableTempCache = 'temp-cache'
 akReprocess = 'reprocess'
+akReprocessPrevConfig = 'reprocess-prev-config'
 
 ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
 ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
@@ -40,6 +41,7 @@ ckNamespaceReplacements = 'namespaceReplacements'
 ckGenericReplacements = 'genericReplacements'
 ckCompilationCommand = 'compilationCommand'
 ckReprocess = 'reprocess'
+ckReprocessPrevConfig = 'reprocessPrevConfig'
 
 
 
@@ -50,7 +52,16 @@ ckReprocess = 'reprocess'
 # Cache
 # -----------------------------------------------------------------------------------------------------------
 
+fkCacheConfigFilePath = tempfile.gettempdir() + "/lastCamomillaConfig.json"
 fkCacheFilePath = tempfile.gettempdir() + "/lastCamomilla.out"
+
+def writeTempConfigCache(contents):
+    with open(fkCacheConfigFilePath, "w+") as f:
+        f.write(contents)
+
+def readTempConfigCache():
+    with open(fkCacheConfigFilePath) as f:
+        return f.read()
 
 def writeTempCache(contents):
     with open(fkCacheFilePath, "w+") as f:
@@ -93,6 +104,9 @@ def makeArgParser():
 
     addFeatureOpt(ap, akReprocess, ckReprocess, False, \
         "Reprocess previous source")
+
+    addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, True, \
+        "Reprocess with previous configuration")
 
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
@@ -243,6 +257,9 @@ class Camomilla:
         if self.enableTempCache():
             # Cache source error
             writeTempCache(src)
+
+            # Cache config
+            writeTempConfigCache(json.dumps(self._conf))
         # _______________________________________________________
         #
 
@@ -342,6 +359,14 @@ def makeFinalConfig():
 def main():
     conf = makeFinalConfig()
     camomilla = Camomilla(conf)
+
+    # If reprocessing with previous config, load it and override with command line
+    if conf[ckReprocess] and conf[ckReprocessPrevConfig]:
+        ap = makeArgParser()
+        args = ap.parse_known_args()
+        conf = makeInitialConfig(args)
+        conf = mergeConfig(conf, loadConfig(fkCacheConfigFilePath))
+        conf = mergeConfig(conf, makeInitialConfig(args))
 
     # Read from temp cache if reprocessing, otherwise from stdin
     src = readTempCache() if conf[ckReprocess] else sys.stdin.read()
