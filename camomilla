@@ -24,6 +24,7 @@ pp = pprint.PrettyPrinter(indent=4)
 # Configuration keys
 # -----------------------------------------------------------------------------------------------------------
 
+# Command-line argument name constants
 akEnableTemplateCollapsing = 'template-collapsing'
 akEnableNamespaceReplacements = 'namespace-replacements'
 akEnableGenericReplacements = 'generic-replacements'
@@ -31,6 +32,7 @@ akEnableTempCache = 'temp-cache'
 akReprocess = 'reprocess'
 akReprocessPrevConfig = 'reprocess-prev-config'
 
+# Configuration dictionary key constants
 ckEnableTemplateCollapsing = 'enableTemplateCollapsing'
 ckEnableNamespaceReplacements = 'enableNamespaceReplacements'
 ckEnableGenericReplacements = 'enableGenericReplacements'
@@ -73,13 +75,13 @@ def readTempCache():
 #
 #
 # -----------------------------------------------------------------------------------------------------------
-# Configuration/arg parsing
+# Arg parsing
 # -----------------------------------------------------------------------------------------------------------
 
-def addFeatureOpt(ap, flagName, key, defaultValue, helpStr):
+def addFeatureOpt(ap, longFlagName, key, defaultValue, helpStr):
     ap_feature = ap.add_mutually_exclusive_group(required=False)
-    ap_feature.add_argument('--' + flagName, dest=key, action='store_true', help="| Control " + helpStr)
-    ap_feature.add_argument('--no-' + flagName, dest=key, action='store_false', help="'")
+    ap_feature.add_argument('--' + longFlagName, dest=key, action='store_true', help="| Control " + helpStr)
+    ap_feature.add_argument('--no-' + longFlagName, dest=key, action='store_false', help="'")
     ap.set_defaults(**{key:defaultValue})
 
 def addFeatureOptS(ap, shortFlagName, longFlagName, key, defaultValue, helpStr):
@@ -88,45 +90,44 @@ def addFeatureOptS(ap, shortFlagName, longFlagName, key, defaultValue, helpStr):
     ap_feature.add_argument('--no-' + longFlagName, dest=key, action='store_false', help="'")
     ap.set_defaults(**{key:defaultValue})
 
+def argDefault(noDefaults, x):
+    return None if noDefaults else x
+
 def makeArgParser(noDefaults, parseReprocess):
+    # `None` if `noDefaults`, otherwise `x`
+    def ad(x):
+        return argDefault(noDefaults, x)
+
     ap = argparse.ArgumentParser(\
         formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=256))
 
-    addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, \
-        None if noDefaults else True, \
+    addFeatureOpt(ap, akEnableTemplateCollapsing, ckEnableTemplateCollapsing, ad(True), \
         "template collapsing")
 
-    addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, \
-        None if noDefaults else True, \
+    addFeatureOpt(ap, akEnableNamespaceReplacements, ckEnableNamespaceReplacements, ad(True), \
         "namespace replacements")
 
-    addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, \
-        None if noDefaults else True, \
+    addFeatureOpt(ap, akEnableGenericReplacements, ckEnableGenericReplacements, ad(True), \
         "generic replacements")
 
     if parseReprocess:
-        addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, \
-            None if noDefaults else True, \
+        addFeatureOpt(ap, akEnableTempCache, ckEnableTempCache, ad(True), \
             "temp cache")
 
-        addFeatureOptS(ap, '-r', akReprocess, ckReprocess, \
-            None if noDefaults else False, \
+        addFeatureOptS(ap, '-r', akReprocess, ckReprocess, ad(False), \
             "Reprocess previous source")
 
-        addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, \
-            None if noDefaults else True, \
+        addFeatureOpt(ap, akReprocessPrevConfig, ckReprocessPrevConfig, ad(True), \
             "Reprocess with previous configuration")
 
     ap.add_argument('-d', '--depth', \
         help="Template collapsing depth", \
-        type=int, \
-        default=None if noDefaults else 1, \
+        type=int, default=ad(1), \
         dest=ckTemplateCollapsingDepth, metavar='X')
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        type=str, \
-        default=None if noDefaults else "", \
+        type=str, default=ad(""), \
         dest=ckConfigPaths, metavar='P')
 
     # TODO:
@@ -136,6 +137,15 @@ def makeArgParser(noDefaults, parseReprocess):
     #     type=str, default="", nargs=argparse.REMAINDER, dest=ckCompilationCommand, metavar='X')
 
     return ap
+
+
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Argument propagation
+# -----------------------------------------------------------------------------------------------------------
 
 def canPropagate(key, origin):
     return key in origin.keys() and origin[key] != None
@@ -167,48 +177,28 @@ def propagateEverything(origin, target):
     propagateReplacements(ckNamespaceReplacements, origin, target)
     propagateReplacements(ckGenericReplacements, origin, target)
 
-def loadConfig(path):
-    with open(path) as data:
-        j = json.load(data)
-        res = {
-            ckNamespaceReplacements: dict(),
-            ckGenericReplacements: dict(),
-            ckConfigPaths: set()
-        }
 
-        propagateEverything(j, res)
-        propagateConfigPaths(ckConfigPaths, j, res)
 
-        return res
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Driver
+# -----------------------------------------------------------------------------------------------------------
 
-# TODO:
 class Camomilla:
     def __init__(self, conf):
         self._conf = conf
 
-    def namespaceReplacements(self):
-        return self._conf[ckNamespaceReplacements]
-
-    def genericReplacements(self):
-        return self._conf[ckGenericReplacements]
-
-    def templateCollapsingDepth(self):
-        return self._conf[ckTemplateCollapsingDepth]
-
-    def enableNamespaceReplacements(self):
-        return self._conf[ckEnableNamespaceReplacements]
-
-    def enableGenericReplacements(self):
-        return self._conf[ckEnableGenericReplacements]
-
-    def enableTemplateCollapsing(self):
-        return self._conf[ckEnableTemplateCollapsing]
-
-    def enableTempCache(self):
-        return self._conf[ckEnableTempCache]
-
-    def reprocess(self):
-        return self._conf[ckReprocess]
+    # Configuration getters
+    def namespaceReplacements(self):        return self._conf[ckNamespaceReplacements]
+    def genericReplacements(self):          return self._conf[ckGenericReplacements]
+    def templateCollapsingDepth(self):      return self._conf[ckTemplateCollapsingDepth]
+    def enableNamespaceReplacements(self):  return self._conf[ckEnableNamespaceReplacements]
+    def enableGenericReplacements(self):    return self._conf[ckEnableGenericReplacements]
+    def enableTemplateCollapsing(self):     return self._conf[ckEnableTemplateCollapsing]
+    def enableTempCache(self):              return self._conf[ckEnableTempCache]
+    def reprocess(self):                    return self._conf[ckReprocess]
 
     # Find all `<...>` pair ranges
     def _find_angles(self, s, xi_start, xi_end):
@@ -253,6 +243,15 @@ class Camomilla:
 
         yield low, high  # end the final run
 
+    def _subDisambiguator(self, dict, x):
+        matched_str = x.string[x.start():x.end()]
+        # print(matched_str)
+        for k, v in dict.items():
+            if re.match(k, matched_str) != None:
+                return v
+
+        raise Exception("No valid replacement for " + matched_str)
+
     # From http://stackoverflow.com/questions/15175142/
     def _multiple_replace(self, k_mapper, v_mapper, xdict, src):
         # Bail out if there are no replacements
@@ -264,12 +263,13 @@ class Camomilla:
 
         # Create a regular expression  from the dictionary keys
         # TODO: support regexes
-        escaped_keys = map(re.escape, mapped_dict.keys())
+        escaped_keys =  mapped_dict.keys()
         joined_regex_matcher = "({})".format("|".join(escaped_keys))
         regex = re.compile(joined_regex_matcher)
 
         # For each match, look-up corresponding value in dictionary
-        return regex.sub(lambda x: mapped_dict[x.string[x.start():x.end()]], src)
+
+        return regex.sub(lambda x: self._subDisambiguator(mapped_dict, x), src)
 
     def process(self, src):
         out = ""
@@ -333,6 +333,29 @@ class Camomilla:
 
         return out
 
+
+
+#
+#
+#
+# -----------------------------------------------------------------------------------------------------------
+# Configuration
+# -----------------------------------------------------------------------------------------------------------
+
+def loadConfig(path):
+    with open(path) as data:
+        j = json.load(data)
+        res = {
+            ckNamespaceReplacements: dict(),
+            ckGenericReplacements: dict(),
+            ckConfigPaths: set()
+        }
+
+        propagateEverything(j, res)
+        propagateConfigPaths(ckConfigPaths, j, res)
+
+        return res
+
 def mergeConfig(parent, x):
     # Recursively merge configs
     if ckConfigPaths in x.keys():
@@ -386,20 +409,26 @@ def confDispatch():
 
     # If reprocessing with previous config, load it and override with command line
     if conf[ckReprocess] and conf[ckReprocessPrevConfig]: 
+
+        # Make initial base config and merge it with cached config
         conf = mergeConfig(makeInitialBaseConfig(), loadConfig(fkCacheConfigFilePath))
 
+        # Override cached config with eventual command-line arguments 
         ap = makeArgParser(True, False)
         args = vars(ap.parse_known_args()[0])
         propagateEverything(args, conf)
         
+        # Override config with eventual command-line config paths
         if canPropagate(ckConfigPaths, args):
             for child in args[ckConfigPaths].split(' '):
                 conf = mergeConfig(conf, loadConfig(child))
 
+        # Prevent altering the cache
         conf[ckReprocess] = True
         conf[ckEnableTempCache] = False
 
     return conf
+
 
 
 #

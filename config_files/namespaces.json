@@ -2,6 +2,7 @@
     "namespaceReplacements":
     {
         "std": "",
+        "__cxx..": "cxx",
         "boost::hana": "bh",
         "boost::fusion": "bf",
         "boost::spirit": "bs",
