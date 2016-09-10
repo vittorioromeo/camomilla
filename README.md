@@ -260,26 +260,14 @@ When multiple configuration files are passed as command-line arguments, or if an
 
 
 
-<! --
-## TODO
 
-* Look for TODOs in script.
+## Example errors 
 
-* gcc, g++, clang, clang++ aliases that pass error to camomilla.
+The table below shows the size reduction of the errors in the `example_errors` folder.
 
-* Makefile/install script.
+|               | Bytes (original) | Bytes (after camomilla) | Relative size change |
+|---------------|------------------|-------------------------|----------------------|
+| g++ 6.1.1     | 38487            | 3680                    | -90.43%              |
+| clang++ 3.8.1 | 16856            | 2990                    | -82.26%              |
 
-* --depth=-1 or --alldepth or whatever.
-
-* Flags to control transformations.
-
-* Reading from config file.
-
-* Refactor code.
-
-* --help -h
-
-* Blog article.
-
-* Table in README with kbs/wordcount before/after.
--->
+A size reduction often means that the error is easier to pinpoint. Using `-r` *(`--reprocess`)* to incrementally "add detail" to the error is then a good approach to gather more information on its cause/origin.
