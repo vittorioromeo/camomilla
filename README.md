@@ -275,8 +275,8 @@ A size reduction often means that the error is easier to pinpoint. Using `-r` *(
 
 Here's a screenshot of the original `g++` error - it couldn't fit in my terminal window.
 
-![Terminal screenshot: original error](/example_errors/before.png)
+![Terminal screenshot: original error](/example_errors/gcc_before.png)
 
 Here's a screenshot of the the same error, processed by `camomilla`.
 
-![Terminal screenshot: processed error](/example_errors/after.png)
+![Terminal screenshot: processed error](/example_errors/gcc_after.png)
