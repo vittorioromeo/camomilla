@@ -94,7 +94,7 @@ I think this is something that should be addressed directly in the compilers - I
 
 ### Error redirection
 
-Errors produced by compilers can easily be piped into `camomilla`:
+Errors produced by compilers can be easily piped into `camomilla`:
 
 ```bash
 # Pipe both `stdout` and `stderr` into `camomilla`
