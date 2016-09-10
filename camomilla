@@ -127,7 +127,7 @@ def makeArgParser(noDefaults, parseReprocess):
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        dest=ckConfigPaths, metavar='P', \
+        dest=ckConfigPaths, default=[], metavar='P', \
         action="append")
 
     # TODO:
@@ -418,7 +418,7 @@ def confDispatch():
         
         # Override config with eventual command-line config paths
         if canPropagate(ckConfigPaths, args):
-            for child in args[ckConfigPaths].split(' '):
+            for child in args[ckConfigPaths]:
                 conf = mergeConfig(conf, loadConfig(child))
 
         # Prevent altering the cache
