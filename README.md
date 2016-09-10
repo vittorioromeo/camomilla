@@ -111,6 +111,20 @@ g++ ./x.cpp &> error.out
 cat error | camomilla -d2
 ```
 
+### Reprocessing
+
+The last processed original error is cached *(unless `--no-temp-cache` is specified)*. It is possible to reuse the source of the last error to perform different transformations, ignoring `stdin`. This is particularly useful when playing with the `--depth` parameter to get the required typename information while avoiding clutter.
+
+```bash
+# Process error
+g++ ./x.cpp |& camomilla -d0
+
+# Whoops! Need more typename information.
+camomilla -r -d1
+
+# Still a little bit more...
+camomilla -r -d2
+```
 
 
 ## Configuration
