@@ -2,7 +2,7 @@
     "genericReplacements":
     {
         "integral_constant": "ic",
-        "lambda(": "[?](",
+        "lambda\\(": "[?](",
         "size_t": "sz_t",
         "unsigned ": "u",
         "long unsigned": "ul",
