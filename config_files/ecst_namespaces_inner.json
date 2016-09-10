@@ -1,7 +1,5 @@
 {
     "namespaceReplacements": 
     {
-        "ecstTEST": "ecstrrr",
-        "boost::hana": "bsth"
     }
 }
