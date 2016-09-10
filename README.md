@@ -273,10 +273,10 @@ The table below shows the size reduction of the errors in the `example_errors` f
 A size reduction often means that the error is easier to pinpoint. Using `-r` *(`--reprocess`)* to incrementally "add detail" to the error is then a good approach to gather more information on its cause/origin.
 
 
-Here's a screenshot of the original `g++` error - it couldn't fit in my terminal window.
+Here's a *(partial)* screenshot of the original `g++` error - it couldn't fit in my terminal window.
 
 ![Terminal screenshot: original error](/example_errors/gcc_before.png)
 
-Here's a screenshot of the the same error, processed by `camomilla`.
+Here's the *full* screenshot of the the same error, processed by `camomilla`.
 
 ![Terminal screenshot: processed error](/example_errors/gcc_after.png)
