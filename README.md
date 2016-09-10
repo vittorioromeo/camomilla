@@ -7,7 +7,7 @@
 `camomilla` transforms the error text to make it easier to read. It supports *JSON configuration files* that can include each other recursively and *caches the last error* so that the user can quickly *reprocess* the original error with different transformation options.
 
 
-## Example errors 
+## Example errors
 
 The table below shows the size reduction of the errors in the `example_errors` folder. The original error was generated from a real project, [ecst](http://github.com/SuperV1234/ecst), by simply mispelling a member field name in a template-heavy context.
 
@@ -31,6 +31,8 @@ Here's the *full* screenshot of the the same error, processed by `camomilla`.
 ## Solution or workaround?
 
 `camomilla` is merely a workaround for the fact that compilers do not filter *(either automatically or through flags)* the depth of template typenames. Errors in projects making use of libraries such as `boost::hana` or `boost::fusion` therefore include a lot of "typename boilerplate" that can make the error harder to read.
+
+Library developers are sometimes forced to make use of techniques to erase the long typenames in order to simplify the errors and *decrease compilation time*: [`boost::experimental::di`](https://github.com/boost-experimental/di) is an example.
 
 I think this is something that should be addressed directly in the compilers - I've created a *feature request/bug report* both in the [GCC Bug Tracker](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71167) and in the [Clang Bug Tracker](https://llvm.org/bugs/show_bug.cgi?id=27793).
 
@@ -128,22 +130,22 @@ optional arguments:
 
   --template-collapsing        | Control template collapsing
   --no-template-collapsing     '
-  
+
   --namespace-replacements     | Control namespace replacements
   --no-namespace-replacements  '
-  
+
   --generic-replacements       | Control generic replacements
   --no-generic-replacements    '
-  
+
   --temp-cache                 | Control temp cache
   --no-temp-cache              '
-  
+
   -r, --reprocess              | Control Reprocess previous source
   --no-reprocess               '
-  
+
   --reprocess-prev-config      | Control Reprocess with previous configuration
   --no-reprocess-prev-config   '
-  
+
   -d X, --depth X              Template collapsing depth
   -c P, --config P             Configuration file path(s)
 ```
