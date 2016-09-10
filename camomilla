@@ -10,10 +10,7 @@ import re
 import time
 import argparse
 import json
-import pprint
 import tempfile
-
-pp = pprint.PrettyPrinter(indent=4)
 
 
 
