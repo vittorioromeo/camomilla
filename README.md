@@ -4,12 +4,12 @@
 
 `camomilla` is a simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
 
-`camomilla` transforms the error text to make it easier to read. It supports *JSON configuration files* that can include each other recursively and *caches the last error* so that the user can quickly play around with transformation options.
+`camomilla` transforms the error text to make it easier to read. It supports *JSON configuration files* that can include each other recursively and *caches the last error* so that the user can quickly *reprocess* the original error with different transformation options.
 
 
 ## Example errors 
 
-The table below shows the size reduction of the errors in the `example_errors` folder.
+The table below shows the size reduction of the errors in the `example_errors` folder. The original error was generated from a real project, [ecst](http://github.com/SuperV1234/ecst), by simply mispelling a member field name in a template-heavy context.
 
 |               | Bytes (original) | Bytes (after camomilla) | Relative size change |
 |---------------|------------------|-------------------------|----------------------|
@@ -26,6 +26,13 @@ Here's a *(partial)* screenshot of the original `g++` error - it couldn't fit in
 Here's the *full* screenshot of the the same error, processed by `camomilla`.
 
 ![Terminal screenshot: processed error](/example_errors/gcc_after.png)
+
+
+## Solution or workaround?
+
+`camomilla` is merely a workaround for the fact that compilers do not filter *(either automatically or through flags)* the depth of template typenames. Errors in projects making use of libraries such as `boost::hana` or `boost::fusion` therefore include a lot of "typename boilerplate" that can make the error harder to read.
+
+I think this is something that should be addressed directly in the compilers - I've created a *feature request/bug report* both in the [GCC Bug Tracker](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71167) and in the [Clang Bug Tracker](https://llvm.org/bugs/show_bug.cgi?id=27793).
 
 
 
