@@ -6,7 +6,30 @@
 
 `camomilla` transforms the error text to make it easier to read. It supports *JSON configuration files* that can include each other recursively and *caches the last error* so that the user can quickly play around with transformation options.
 
-### Transformations
+
+## Example errors 
+
+The table below shows the size reduction of the errors in the `example_errors` folder.
+
+|               | Bytes (original) | Bytes (after camomilla) | Relative size change |
+|---------------|------------------|-------------------------|----------------------|
+| g++ 6.1.1     | 38487            | 3680                    | -90.43%              |
+| clang++ 3.8.1 | 16856            | 2990                    | -82.26%              |
+
+A size reduction often means that the error is easier to pinpoint. Using `-r` *(`--reprocess`)* to incrementally "add detail" to the error is then a good approach to gather more information on its cause/origin.
+
+
+Here's a *(partial)* screenshot of the original `g++` error - it couldn't fit in my terminal window.
+
+![Terminal screenshot: original error](/example_errors/gcc_before.png)
+
+Here's the *full* screenshot of the the same error, processed by `camomilla`.
+
+![Terminal screenshot: processed error](/example_errors/gcc_after.png)
+
+
+
+## Transformations
 
 `camomilla` performs the following text transformations:
 
@@ -260,23 +283,3 @@ When multiple configuration files are passed as command-line arguments, or if an
 
 
 
-
-## Example errors 
-
-The table below shows the size reduction of the errors in the `example_errors` folder.
-
-|               | Bytes (original) | Bytes (after camomilla) | Relative size change |
-|---------------|------------------|-------------------------|----------------------|
-| g++ 6.1.1     | 38487            | 3680                    | -90.43%              |
-| clang++ 3.8.1 | 16856            | 2990                    | -82.26%              |
-
-A size reduction often means that the error is easier to pinpoint. Using `-r` *(`--reprocess`)* to incrementally "add detail" to the error is then a good approach to gather more information on its cause/origin.
-
-
-Here's a *(partial)* screenshot of the original `g++` error - it couldn't fit in my terminal window.
-
-![Terminal screenshot: original error](/example_errors/gcc_before.png)
-
-Here's the *full* screenshot of the the same error, processed by `camomilla`.
-
-![Terminal screenshot: processed error](/example_errors/gcc_after.png)
