@@ -1,14 +1,14 @@
 # camomilla
 
-
-TODO: change '-c a b c' with '-c"a b c"'
-
-
 ## What is it?
 
 `camomilla` is a simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
 
-`camomilla` perform the following text transformations:
+`camomilla` transforms the error text to make it easier to read. It supports *JSON configuration files* that can include each other recursively and *caches the last error* so that the user can quickly play around with transformation options.
+
+### Transformations
+
+`camomilla` performs the following text transformations:
 
 1. **Template typename collapsing.**
 
@@ -48,11 +48,7 @@ TODO: change '-c a b c' with '-c"a b c"'
     bh::tuple<bh::tuple<bh::int_c<10>, bh::int_c<15>>>
     ```
 
-3. **Tuple/pair replacements.**
-
-    TODO
-
-4. **Generic replacement regexes.**
+3. **Generic replacement regexes.**
 
     ```bash
     echo "std::forward<decltype(std::tuple<unsigned long long, std::size_t, int>)>(x)" | camomilla -d100
@@ -64,31 +60,7 @@ TODO: change '-c a b c' with '-c"a b c"'
 
 ## Usage
 
-### Compiling with `camomilla`
-
-TODO: design, implement and test
-
-TODO: ideally should be able to alias gcc:
-
-```bash
-alias cm_g++='camomilla -d2 -c"c0.json c1.json" g++'
-alias cm_clang++='camomilla -d2 -c"c0.json c1.json" clang++'
-```
-
-```bash
-cm_g++ ./x.cpp
-```
-
-TODO: should implement like:
-
-1) look for extra arguments with ap.parse_known_args() or ap.REMAINDER
-
-2) use os.system ??
-
-
 ### Error redirection
-
-TODO: test
 
 Errors produced by compilers can easily be piped into `camomilla`:
 
@@ -97,7 +69,7 @@ Errors produced by compilers can easily be piped into `camomilla`:
 g++ ./x.cpp |& camomilla -d5
 ```
 
-If `|&` is not supported by your shell or you want to compare the original error to the processed one, using a temporary file is a good solution:
+If `|&` is not supported by your shell or if you want to compare the original error to the processed one, using a temporary file is a good solution:
 
 ```bash
 # Redirect both `stdout` and `stderr` into `error.out`
@@ -108,7 +80,43 @@ cat error | camomilla -d2
 ```
 
 
+
 ## Configuration
+
+### Argparse-generated help
+
+```bash
+usage: camomilla [-h] [--template-collapsing | --no-template-collapsing]
+                 [--namespace-replacements | --no-namespace-replacements]
+                 [--generic-replacements | --no-generic-replacements]
+                 [--temp-cache | --no-temp-cache] [-r | --no-reprocess]
+                 [--reprocess-prev-config | --no-reprocess-prev-config] [-d X]
+                 [-c P]
+
+optional arguments:
+  -h, --help                   show this help message and exit
+
+  --template-collapsing        | Control template collapsing
+  --no-template-collapsing     '
+  
+  --namespace-replacements     | Control namespace replacements
+  --no-namespace-replacements  '
+  
+  --generic-replacements       | Control generic replacements
+  --no-generic-replacements    '
+  
+  --temp-cache                 | Control temp cache
+  --no-temp-cache              '
+  
+  -r, --reprocess              | Control Reprocess previous source
+  --no-reprocess               '
+  
+  --reprocess-prev-config      | Control Reprocess with previous configuration
+  --no-reprocess-prev-config   '
+  
+  -d X, --depth X              Template collapsing depth
+  -c P, --config P             Configuration file path(s)
+```
 
 ### Basic command-line options
 
@@ -117,21 +125,42 @@ cat error | camomilla -d2
 Error text transformations can be turned on and off individually by using the following flags. All transformations are **on** by default.
 
 ```bash
-# Template typename collapsing
+# Template typename collapsing (default: ON)
 --template-collapsing
 --no-template-collapsing
 
-# Namespace replacement regexes
+# Namespace replacement regexes (default: ON)
 --namespace-replacements
 --no-namespace-replacements
 
-# Tuple/pair replacements
---tuple-pair-replacements
---no-tuple-pair-replacements
-
-# Generic replacement regexes
+# Generic replacement regexes (default: ON)
 --generic-replacements
 --no-generic-replacements
+```
+
+#### Enable/disable temporary cache
+
+`camomilla` stores the last processed original error *(and last used configuration)* in your OS-dependant *temp folder*. This option can be controlled with:
+
+```bash
+# Temporary "last error cache" (default: ON)
+--temp-cache
+--no-temp-cache
+```
+
+#### Reprocessing
+
+If an error has been cached, `camomilla` can be invoked with reprocessing options to read directly from the cache *(ignoring standard input)*:
+
+```bash
+# Reprocess cached error (default: OFF)
+-r
+--reprocess
+--no-reprocess
+
+# Reprocess with cached configuration (default: ON)
+--reprocess-prev-config
+--no-reprocess-prev-config
 ```
 
 #### Options - template typename collapsing
@@ -162,7 +191,7 @@ Any number of configuration file paths can be passed to `camomilla` through the 
 camomilla -c"conf0.json"
 
 # Executes `camomilla` reading `conf0.json` first, then `conf1.json`
-camomilla -c"conf0.json conf1.json"
+camomilla -c"conf0.json" -c"conf1.json"
 ```
 
 Here's a more complex example:
@@ -230,6 +259,8 @@ When multiple configuration files are passed as command-line arguments, or if an
     * If a configuration file defines a replacement that wasn't previously seen, it will be added without replacing any existing replacement.
 
 
+
+<! --
 ## TODO
 
 * Look for TODOs in script.
@@ -251,3 +282,4 @@ When multiple configuration files are passed as command-line arguments, or if an
 * Blog article.
 
 * Table in README with kbs/wordcount before/after.
+-->
