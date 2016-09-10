@@ -127,8 +127,8 @@ def makeArgParser(noDefaults, parseReprocess):
 
     ap.add_argument('-c', '--config', \
         help="Configuration file path(s)", \
-        type=str, default=ad(""), \
-        dest=ckConfigPaths, metavar='P')
+        dest=ckConfigPaths, metavar='P', \
+        action="append")
 
     # TODO:
     #
@@ -245,7 +245,7 @@ class Camomilla:
 
     def _subDisambiguator(self, dict, x):
         matched_str = x.string[x.start():x.end()]
-        # print(matched_str)
+
         for k, v in dict.items():
             if re.match(k, matched_str) != None:
                 return v
@@ -262,13 +262,11 @@ class Camomilla:
         mapped_dict = {k_mapper(k): v_mapper(v) for k, v in xdict.items()}
 
         # Create a regular expression  from the dictionary keys
-        # TODO: support regexes
         escaped_keys =  mapped_dict.keys()
         joined_regex_matcher = "({})".format("|".join(escaped_keys))
         regex = re.compile(joined_regex_matcher)
 
         # For each match, look-up corresponding value in dictionary
-
         return regex.sub(lambda x: self._subDisambiguator(mapped_dict, x), src)
 
     def process(self, src):
@@ -377,7 +375,7 @@ def makeInitialConfig(args):
     conf = vars(args[0])
     conf[ckNamespaceReplacements] = dict()
     conf[ckGenericReplacements] = dict()
-    conf[ckConfigPaths] = [] if len(conf[ckConfigPaths]) == 0 else conf[ckConfigPaths].split(' ')
+    conf[ckConfigPaths] = conf[ckConfigPaths]
 
     conf[ckNamespaceReplacements]["std"] = ""
     conf[ckGenericReplacements]["<>"] = "<?>"
