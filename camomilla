@@ -457,22 +457,14 @@ if __name__ == "__main__":
 
 ### TODO
 #
-#* Look for TODOs in script.
+# * gcc, g++, clang, clang++ aliases that pass error to camomilla.
+# 
+# * Makefile/install script.
+# 
+# * --depth=-1 or --alldepth or whatever.
+#  
+# * Refactor code.
+# 
+# * Blog article.
 #
-#* gcc, g++, clang, clang++ aliases that pass error to camomilla.
-#
-#* Makefile/install script.
-#
-#* --depth=-1 or --alldepth or whatever.
-#
-#* Flags to control transformations.
-#
-#* Reading from config file.
-#
-#* Refactor code.
-#
-#* --help -h
-#
-#* Blog article.
-#
-#* Table in README with kbs/wordcount before/after.
+# * tuple/pair sugar
