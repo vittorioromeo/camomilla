@@ -271,3 +271,12 @@ The table below shows the size reduction of the errors in the `example_errors` f
 | clang++ 3.8.1 | 16856            | 2990                    | -82.26%              |
 
 A size reduction often means that the error is easier to pinpoint. Using `-r` *(`--reprocess`)* to incrementally "add detail" to the error is then a good approach to gather more information on its cause/origin.
+
+
+Here's a screenshot of the original `g++` error - it couldn't fit in my terminal window.
+
+![Terminal screenshot: original error](/example_errors/before.png)
+
+Here's a screenshot of the the same error, processed by `camomilla`.
+
+![Terminal screenshot: processed error](/example_errors/after.png)
