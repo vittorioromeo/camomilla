@@ -282,8 +282,7 @@ class Camomilla:
         #
 
         # Template collapsing ___________________________________
-        #
-        
+        #  
         if self.enableTemplateCollapsing():
             # Find all angle bracket pairs
             angle_pairs = self._find_angles(src, 0, len(src))
