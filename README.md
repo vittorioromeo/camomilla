@@ -135,31 +135,27 @@ camomilla -r -d2
 usage: camomilla [-h] [--template-collapsing | --no-template-collapsing]
                  [--namespace-replacements | --no-namespace-replacements]
                  [--generic-replacements | --no-generic-replacements]
+                 [--process-by-line | --no-process-by-line]
                  [--temp-cache | --no-temp-cache] [-r | --no-reprocess]
                  [--reprocess-prev-config | --no-reprocess-prev-config] [-d X]
                  [-c P]
 
 optional arguments:
   -h, --help                   show this help message and exit
-
   --template-collapsing        | Control template collapsing
   --no-template-collapsing     '
-
   --namespace-replacements     | Control namespace replacements
   --no-namespace-replacements  '
-
   --generic-replacements       | Control generic replacements
   --no-generic-replacements    '
-
+  --process-by-line            | Control process by line
+  --no-process-by-line         '
   --temp-cache                 | Control temp cache
   --no-temp-cache              '
-
-  -r, --reprocess              | Control Reprocess previous source
+  -r, --reprocess              | Control reprocess previous source
   --no-reprocess               '
-
-  --reprocess-prev-config      | Control Reprocess with previous configuration
+  --reprocess-prev-config      | Control reprocess with previous configuration
   --no-reprocess-prev-config   '
-
   -d X, --depth X              Template collapsing depth
   -c P, --config P             Configuration file path(s)
 ```
@@ -209,7 +205,7 @@ If an error has been cached, `camomilla` can be invoked with reprocessing option
 --no-reprocess-prev-config
 ```
 
-#### Options - template typename collapsing
+#### Template typename collapsing options
 
 The depth of the *template typename collapsing* transformation can be specified with the `-d` *(or `--depth`)* flag.
 
@@ -221,6 +217,9 @@ camomilla -d5
 camomilla --depth=100
 ```
 
+#### Process by line
+
+By default, `camomilla` processes the error line by line. This behavior can be disabled *(in order to process the error all at once)* with the `--no-process-by-line` flag.
 
 
 
