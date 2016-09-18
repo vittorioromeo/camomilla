@@ -269,16 +269,16 @@ Configuration files are written in JSON. Here's an example file with complete sy
 
     // Add namespace replacements
     "namespaceReplacements": [
-        ["std", ""],
-        ["boost::hana", "bh"],
-        ["boost::fusion", "bf"],
-        ["boost::spirit", "bs"]
+        "std": "",
+        "boost::hana": "bh",
+        "boost::fusion": "bf",
+        "boost::spirit": "bs",
     ],
 
     // Add generic replacements
     "genericReplacements" : [
-        ["tuple", "tpl"],
-        ["forward", "fwd"]
+        "tuple": "tpl",
+        "forward": "fwd"
     ],
 
     // Include other config files
