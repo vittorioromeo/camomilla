@@ -5,9 +5,9 @@
 # MIT License page: https://opensource.org/licenses/MIT
 # http://vittorioromeo.info | vittorio.romeo@outlook.com
 
-import os, stat, sys
+import os
+import sys
 import re
-import time
 import argparse
 import json
 import tempfile
@@ -369,11 +369,11 @@ class Camomilla:
                 if src == '':
                     break
 
-                self._processImpl(src, ostream, temp_cache);
+                self._processImpl(src, ostream, temp_cache)
         else:
             # Process error at all once
             src = istream.read()
-            self._processImpl(src, ostream, temp_cache);
+            self._processImpl(src, ostream, temp_cache)
 
 
 
