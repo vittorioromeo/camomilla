@@ -256,7 +256,10 @@ class Camomilla:
             if s[i] != '>': return False
 
             if s[i-1] == '-': return False # Dereference arrow
-            if s[i-1] == ' ': return False # No space before '>'
+
+            # Relational operator or stream operator
+            if s[i-1] == ' ' and (s[i+1] == ' ' or s[i+1] == '>') and s[i+2] != '>': 
+                return False 
             
             if s[i-1] == '>' and s[i-2] == ' ': return False # Stream operator
 
