@@ -241,11 +241,32 @@ class Camomilla:
         result_angle_pairs = []
         open_angles = []
 
+        def matchOpen(i):
+            if s[i] != '<': return False
+
+            if s[i-1] == ' ': return False # No space before '<'
+            if s[i-1] == '<': return False # Stream operator
+
+            if s[i+1] == ' ': return False # No space after '<'
+            if s[i+1] == '<': return False # Stream operator
+
+            return True
+
+        def matchClose(i):
+            if s[i] != '>': return False
+
+            if s[i-1] == '-': return False # Dereference arrow
+            if s[i-1] == ' ': return False # No space before '>'
+            
+            if s[i-1] == '>' and s[i-2] == ' ': return False # Stream operator
+
+            return True
+
         for i in range(xi_start, xi_end):
-            if s[i-1] != ' ' and s[i] == '<':
+            if matchOpen(i):
                 open_angles.append(i)
 
-            elif s[i-1] != '-' and s[i] == '>':
+            elif matchClose(i):
                 if len(open_angles) == 0:
                     continue
 
@@ -511,11 +532,6 @@ if __name__ == "__main__":
     sys.exit(main())
 
 
-
-
-
-    
-### TODO: avoid matching stream operators and <= >=
 
 ### TODO
 #
