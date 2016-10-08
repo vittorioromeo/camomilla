@@ -13,6 +13,12 @@ function echoTest {
     echo "____________________________________"
 }
 
+echoTest "ending_space<A<B> >"
+echoTest "ending_space<A<B<C > > >"
+echoTest "ending_space_rel<A<B<(a < b) > >"
+echoTest "ending_space_rel<A<B<(a > b) > >"
+echoTest "ending_space_stream<A<B<(a << b) > >"
+echoTest "ending_space_stream<A<B<(a >> b) > >"
 echoTest "class<Type>"
 echoTest "rel<decltype(a < b)>"
 echoTest "rel<decltype(a > b)>"
