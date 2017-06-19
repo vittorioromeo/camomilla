@@ -11,6 +11,7 @@ import re
 import argparse
 import json
 import tempfile
+import time
 
 
 
@@ -387,6 +388,7 @@ class Camomilla:
     def process(self, istream, ostream, temp_cache):
         if self.enableProcessByLine():
             # Process error line by line
+            lastTime = time.clock()
             while True:
                 src = istream.readline()
 
@@ -394,6 +396,12 @@ class Camomilla:
                     break
 
                 self._processImpl(src, ostream, temp_cache)
+
+                # Flush once per second
+                t = time.clock()
+                if t != lastTime:
+                    ostream.flush()
+                lastTime = t
         else:
             # Process error at all once
             src = istream.read()
