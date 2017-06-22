@@ -1,5 +1,15 @@
 # camomilla
 
+[![license][badge.license]][license]
+[![gratipay][badge.gratipay]][gratipay]
+![badge.python3](https://img.shields.io/badge/python-3-ff69b4.svg?style=flat-square)
+
+[badge.license]: http://img.shields.io/badge/license-mit-blue.svg?style=flat-square
+[badge.gratipay]: https://img.shields.io/gratipay/user/SuperV1234.svg?style=flat-square
+
+[license]: https://github.com/SuperV1234/camomilla/blob/master/LICENSE
+[gratipay]: https://gratipay.com/~SuperV1234/
+
 ## What is it?
 
 `camomilla` is a simple [Python 3](http://python.org) script that simplifies errors produced by C++ compilers. It is very useful while dealing with heavily-templated code *(e.g. when using [boost::hana](http://www.boost.org/doc/libs/1_61_0/libs/hana/doc/html/index.html) or [boost::fusion](http://www.boost.org/doc/libs/1_61_0/libs/fusion/doc/html/))*.
