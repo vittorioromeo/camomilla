@@ -388,7 +388,7 @@ class Camomilla:
     def process(self, istream, ostream, temp_cache):
         if self.enableProcessByLine():
             # Process error line by line
-            lastTime = time.clock()
+            lastTime = time.perf_counter()
             while True:
                 src = istream.readline()
 
@@ -398,8 +398,8 @@ class Camomilla:
                 self._processImpl(src, ostream, temp_cache)
 
                 # Flush once per second
-                t = time.clock()
-                if t != lastTime:
+                t = time.perf_counter()
+                if t - lastTime >= 1.0:
                     ostream.flush()
                 lastTime = t
         else:
